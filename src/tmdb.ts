@@ -104,20 +104,38 @@ export function getPosterUrl(path: string | null, size: 'w200' | 'w300' | 'w500'
 
 // 搜索电视剧
 export async function searchTVShows(query: string, page: number = 1): Promise<TMDBSearchResult[]> {
-  const response = await fetch(
-    `${TMDB_BASE_URL}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=zh-CN&page=${page}`
-  );
-  const data = await response.json();
-  return data.results || [];
+  try {
+    const response = await fetch(
+      `${TMDB_BASE_URL}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=zh-CN&page=${page}`
+    );
+    if (!response.ok) {
+      console.error('TMDB TV search failed:', response.status, response.statusText);
+      return [];
+    }
+    const data = await response.json();
+    return data.results || [];
+  } catch (error) {
+    console.error('TMDB TV search error:', error);
+    return [];
+  }
 }
 
 // 搜索电影
 export async function searchMovies(query: string, page: number = 1): Promise<TMDBMovieResult[]> {
-  const response = await fetch(
-    `${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=zh-CN&page=${page}`
-  );
-  const data = await response.json();
-  return data.results || [];
+  try {
+    const response = await fetch(
+      `${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=zh-CN&page=${page}`
+    );
+    if (!response.ok) {
+      console.error('TMDB Movie search failed:', response.status, response.statusText);
+      return [];
+    }
+    const data = await response.json();
+    return data.results || [];
+  } catch (error) {
+    console.error('TMDB Movie search error:', error);
+    return [];
+  }
 }
 
 // 综合搜索（电视剧 + 电影）

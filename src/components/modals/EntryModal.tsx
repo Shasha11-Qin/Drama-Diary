@@ -44,6 +44,7 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
   const [searchResults, setSearchResults] = useState<(TMDBSearchResult | TMDBMovieResult)[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [newTag, setNewTag] = useState('');
+  const [isComposing, setIsComposing] = useState(false); // 中文输入法组合状态
 
   // 当播出时间变化且首次观看时间为空时，自动同步
   useEffect(() => {
@@ -54,8 +55,11 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
 
   // 搜索 TMDB（带防抖）
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
+    // 如果正在使用中文输入法输入，不触发搜索
+    if (isComposing || !searchQuery.trim()) {
+      if (!searchQuery.trim()) {
+        setSearchResults([]);
+      }
       return;
     }
 
@@ -72,7 +76,7 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, isComposing]);
 
   // 选择搜索结果
   const handleSelect = async (item: TMDBSearchResult | TMDBMovieResult) => {
@@ -178,6 +182,14 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onCompositionStart={() => setIsComposing(true)}
+                onCompositionEnd={(e) => {
+                  setIsComposing(false);
+                  // 输入法结束后，使用最终的文本进行搜索
+                  setSearchQuery(e.currentTarget.value);
+                }}
+                autoComplete="off"
+                enterKeyHint="search"
               />
             </div>
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
