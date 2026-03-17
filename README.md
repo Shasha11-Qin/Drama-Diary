@@ -1,162 +1,63 @@
-# Drama Diary 
+# 🎬 Drama Diary
 
-一个用于记录剧集/电影观看体验的个人日记应用。
+> 你的私人影视日记本
 
-[→ 在线访问](https://your-vercel-url.vercel.app) (Vercel 部署)
+Drama Diary 是一个精心设计的个人影视记录应用，帮你记录看过的每一部好剧，留下那一刻的真实感悟。
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)
-![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite)
 
-## 功能特性
+## ✨ 功能特点
 
-- 📧 邮箱注册、登录、退出（Supabase Auth）
-- 📝 新增 / 编辑 / 删除影视条目
-- 🏷️ 按状态管理条目：`watching`（在看）、`completed`（已看完）、`planned`（想看）
-- 🔍 条目搜索与筛选（关键字）
-- 📊 按评分或年份排序展示
-- 🎬 集成 TMDB 搜索，自动填充影视信息（海报、类型、演员等）
-- 💾 记住账号功能，一键填充邮箱
+### 📝 影视档案管理
+- 记录电影、电视剧、综艺等各类影视作品
+- 自动获取影视信息（海报、演员、简介等）
+- 支持本地上传海报图片
 
-## 技术栈
+### 🏷️ 智能分类
+- **在看** - 正在追的剧集
+- **已看完** - 完整观看记录  
+- **想看** - 收藏想看的片单
 
-| 类别 | 技术 |
-|------|------|
-| 前端框架 | React 19 + TypeScript |
-| 构建工具 | Vite 6 |
-| 样式 | Tailwind CSS 4 |
-| 后端服务 | Supabase（认证 + 数据存储） |
-| 影视数据 | TMDB API |
-| 图标 | Lucide React |
-| 动画 | Motion |
+### ⭐ 评分与感悟
+- 5 级情绪评分（从 😞 到 😍）
+- 记录个人感悟与心得
+- 添加自定义标签
 
-## 快速开始
+### 🔍 快速查找
+- 搜索片名、演员
+- 按评分排序
+- 按年份分组查看
 
-### 1. 克隆项目
-
-```bash
-git clone https://github.com/yourusername/drama-diary.git
-cd drama-diary
-npm install
-```
-
-### 2. 配置环境变量
-
-复制 `.env.example` 为 `.env.local` 并填入你的密钥：
-
-```bash
-cp .env.example .env.local
-```
-
-需要配置的变量：
-- `VITE_SUPABASE_URL` - Supabase 项目 URL
-- `VITE_SUPABASE_ANON_KEY` - Supabase 匿名密钥
-- `VITE_TMDB_API_KEY` - TMDB API 密钥
-
-### 3. 启动开发服务器
-
-```bash
-npm run dev
-```
-
-访问 http://localhost:3000
-
-### 4. 构建生产版本
-
-```bash
-npm run build
-```
-
-## 部署到 Vercel
-
-### 一键部署
-
-点击下方按钮将项目部署到 Vercel：
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/drama-diary)
-
-### 手动部署
-
-1. 推送代码到 GitHub
-2. 在 [Vercel](https://vercel.com) 创建新项目
-3. 导入 GitHub 仓库
-4. 配置环境变量（在 Vercel Dashboard → Settings → Environment Variables 中添加）
-5. 部署
-
-## 数据库配置
-
-在 Supabase 中创建 `dramas` 表：
-
-```sql
-create table dramas (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users not null,
-  title text not null,
-  poster text,
-  rating integer default 0,
-  tags text[] default '{}',
-  actors text[] default '{}',
-  platform text,
-  summary text,
-  reflection text,
-  date text,
-  release_date text,
-  watch_count integer default 1,
-  first_encounter text,
-  completion_date text,
-  status text default 'completed',
-  is_must_watch boolean default false,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- 启用行级安全
-alter table dramas enable row level security;
-
--- 创建策略：用户只能访问自己的数据
-create policy "Users can only access their own dramas"
-  on dramas
-  for all
-  using (auth.uid() = user_id);
-```
-
-## 项目结构
+## 🖼️ 界面预览
 
 ```
-src/
-├── components/
-│   ├── ErrorBoundary.tsx
-│   ├── auth/
-│   │   └── AuthForm.tsx
-│   ├── entries/
-│   │   ├── DiaryEntryCard.tsx
-│   │   └── EntryList.tsx
-│   ├── layout/
-│   │   └── Navbar.tsx
-│   └── modals/
-│       ├── EntryModal.tsx
-│       └── JournalModal.tsx
-├── hooks/
-│   ├── useAuth.ts
-│   ├── useEntries.ts
-│   └── useSearch.ts
-├── supabase.ts
-├── tmdb.ts
-├── types.ts
-├── App.tsx
-└── main.tsx
+┌─────────────────────────────────────┐
+│  🔍 搜索          👤 用户头像        │
+├─────────────────────────────────────┤
+│  [已看完] [在看] [想看]              │
+├─────────────────────────────────────┤
+│  ┌─────┐ ┌─────┐ ┌─────┐           │
+│  │海报 │ │海报 │ │海报 │  ...       │
+│  │剧名 │ │剧名 │ │剧名 │           │
+│  │评分 │ │评分 │ │评分 │           │
+│  └─────┘ └─────┘ └─────┘           │
+└─────────────────────────────────────┘
 ```
 
-## 贡献
+## 📱 适合谁用？
 
-欢迎提交 Issue 和 Pull Request！
+- 🎭 **追剧达人** - 记录追剧进度，管理片单
+- 🎬 **电影爱好者** - 写下观影感想，收藏好片
+- 📝 **生活记录者** - 用影视记录生活点滴
 
-## 许可证
+## 🔗 在线体验
+
+👉 [点击访问](https://drama-diary-eta.vercel.app/)
+
+## 📄 许可证
 
 [MIT](LICENSE)
 
-## 感谢
+---
 
-- [TMDB](https://www.themoviedb.org/) - 影视数据 API
-- [Supabase](https://supabase.com/) - 后端服务
-- [Vercel](https://vercel.com/) - 托管和部署
+Made with ❤️ for movie & drama lovers
