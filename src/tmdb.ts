@@ -140,15 +140,30 @@ export async function searchMovies(query: string, page: number = 1): Promise<TMD
 
 // 综合搜索（电视剧 + 电影）
 export async function searchAll(query: string): Promise<(TMDBSearchResult | TMDBMovieResult)[]> {
-  const [tvResults, movieResults] = await Promise.all([
-    searchTVShows(query),
-    searchMovies(query),
-  ]);
+  try {
+    // 添加超时控制，防止一直转圈
+    const timeoutPromise = new Promise<[]>((_, reject) => {
+      setTimeout(() => reject(new Error('Search timeout')), 10000); // 10秒超时
+    });
+    
+    const searchPromise = Promise.all([
+      searchTVShows(query),
+      searchMovies(query),
+    ]);
+    
+    const [tvResults, movieResults] = await Promise.race([
+      searchPromise,
+      timeoutPromise.then(() => [[], []] as [TMDBSearchResult[], TMDBMovieResult[]]),
+    ]);
 
-  // 合并结果，按热度排序
-  return [...tvResults, ...movieResults]
-    .sort((a, b) => b.popularity - a.popularity)
-    .slice(0, 20);
+    // 合并结果，按热度排序
+    return [...tvResults, ...movieResults]
+      .sort((a, b) => b.popularity - a.popularity)
+      .slice(0, 20);
+  } catch (error) {
+    console.error('SearchAll error:', error);
+    return [];
+  }
 }
 
 // 获取电视剧详情
