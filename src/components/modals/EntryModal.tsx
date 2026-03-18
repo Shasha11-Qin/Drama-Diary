@@ -25,6 +25,9 @@ interface EntryModalProps {
 }
 
 export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModalProps) {
+  // 手机端步骤控制：'search' | 'form'
+  const [mobileStep, setMobileStep] = useState<'search' | 'form'>('search');
+  
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
     actors: initialData?.actors?.join(' / ') || '',
@@ -99,6 +102,9 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
         releaseDate: detail.first_air_date || '',
         poster: getPosterUrl(detail.poster_path, 'w500'),
       });
+      
+      // 手机端：选择后跳转到表单页面
+      setMobileStep('form');
     } catch (error) {
       console.error('Failed to get detail:', error);
     }
@@ -164,8 +170,14 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
         className={`relative w-full ${initialData ? 'max-w-4xl' : 'max-w-6xl'} bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-[750px]`}
       >
         {/* Left Page: Discovery - Only show when creating new entry */}
+        {/* 电脑端：并排显示 | 手机端：根据步骤显示 */}
         {!initialData && (
-          <section className="w-full md:w-1/3 p-8 border-r border-outline/15 flex flex-col gap-6 bg-gray-50">
+          <section 
+            className={`
+              w-full md:w-1/3 p-8 border-r border-outline/15 flex flex-col gap-6 bg-gray-50
+              ${mobileStep === 'form' ? 'hidden md:flex' : 'flex'}
+            `}
+          >
             <div className="flex items-center justify-between">
               <h2 className="font-serif text-2xl text-on-surface">搜索剧集</h2>
               <span className="text-xs font-medium tracking-widest text-primary/60 uppercase">TMDB 数据</span>
@@ -231,7 +243,11 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
         )}
 
         {/* Right Page: Diary Entry (Editable) */}
-        <section className="flex-1 p-8 flex flex-col gap-6 bg-white overflow-y-auto custom-scrollbar">
+        {/* 电脑端：并排显示 | 手机端：根据步骤显示 */}
+        <section className={`
+          flex-1 p-8 flex flex-col gap-6 bg-white overflow-y-auto custom-scrollbar
+          ${!initialData && mobileStep === 'search' ? 'hidden md:flex' : 'flex'}
+        `}>
           <div className="flex items-center justify-between">
             <span className="text-xs text-on-surface-variant italic">{new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
           </div>
@@ -487,6 +503,15 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
           </div>
 
           <div className="mt-6 pt-6 border-t border-outline/10 flex justify-end gap-4">
+            {/* 手机端：在表单页面显示返回搜索按钮 */}
+            {!initialData && (
+              <button 
+                onClick={() => setMobileStep('search')} 
+                className="md:hidden px-6 py-2.5 text-on-surface-variant font-bold text-sm hover:bg-surface-container transition-colors rounded-lg"
+              >
+                返回搜索
+              </button>
+            )}
             <button onClick={onClose} className="px-6 py-2.5 text-on-surface-variant font-bold text-sm hover:bg-surface-container transition-colors rounded-lg">
               取消
             </button>
