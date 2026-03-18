@@ -174,15 +174,16 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
         {!initialData && (
           <section 
             className={`
-              w-full md:w-1/3 p-8 border-r border-outline/15 flex flex-col gap-6 bg-gray-50
+              w-full md:w-1/3 p-6 md:p-8 border-r border-outline/15 flex flex-col gap-4 md:gap-6 bg-gray-50
               ${mobileStep === 'form' ? 'hidden md:flex' : 'flex'}
+              h-full overflow-hidden
             `}
           >
             <div className="flex items-center justify-between">
               <h2 className="font-serif text-2xl text-on-surface">搜索剧集</h2>
               <span className="text-xs font-medium tracking-widest text-primary/60 uppercase">TMDB 数据</span>
             </div>
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
               <input
                 className="w-full border-none border-b border-outline bg-transparent pl-8 py-3 focus:ring-0 focus:border-primary placeholder:italic text-lg"
@@ -193,7 +194,7 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                 autoComplete="off"
               />
             </div>
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar min-h-0">
               {isSearching && (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
