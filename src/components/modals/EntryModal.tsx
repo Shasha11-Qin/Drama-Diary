@@ -5,17 +5,18 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Search, X, Plus, BookOpen, Image } from 'lucide-react';
+import { Search, X, Plus, BookOpen, Image, Edit3, Database } from 'lucide-react';
 import { DramaEntry } from '../../types';
-import { 
-  searchAll, 
-  getTVDetail, 
-  getMovieDetail, 
-  getPosterUrl, 
-  isTVShow, 
-  TMDBSearchResult, 
-  TMDBMovieResult 
+import {
+  searchAll,
+  getTVDetail,
+  getMovieDetail,
+  getPosterUrl,
+  isTVShow,
+  TMDBSearchResult,
+  TMDBMovieResult
 } from '../../tmdb';
+import { ReflectionModal } from './ReflectionModal';
 
 interface EntryModalProps {
   onClose: () => void;
@@ -25,9 +26,11 @@ interface EntryModalProps {
 }
 
 export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModalProps) {
+  // 录入模式：'tmdb' = TMDB搜索 | 'manual' = 手工录入
+  const [inputMode, setInputMode] = useState<'tmdb' | 'manual'>('tmdb');
   // 手机端步骤控制：'search' | 'form'
   const [mobileStep, setMobileStep] = useState<'search' | 'form'>('search');
-  
+
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
     actors: initialData?.actors?.join(' / ') || '',
@@ -40,12 +43,16 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
     tags: initialData?.tags || [] as string[],
     poster: initialData?.poster || 'https://picsum.photos/seed/new/600/900',
     status: initialData?.status || 'completed' as 'completed' | 'watching' | 'planned',
-    firstEncounter: initialData?.firstEncounter || initialData?.releaseDate || ''
+    firstEncounter: initialData?.firstEncounter || initialData?.releaseDate || '',
+    currentEpisode: initialData?.currentEpisode || 0,
+    totalEpisodes: initialData?.totalEpisodes || 0,
   });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<(TMDBSearchResult | TMDBMovieResult)[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchFilter, setSearchFilter] = useState<'all' | 'tv' | 'movie'>('all');
+  const [showReflectionModal, setShowReflectionModal] = useState(false);
   const [newTag, setNewTag] = useState('');
 
   // 当播出时间变化且首次观看时间为空时，自动同步
@@ -137,6 +144,8 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
       date: initialData?.date || new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
       status: formData.status,
       firstEncounter: formData.firstEncounter || undefined,
+      currentEpisode: formData.currentEpisode || undefined,
+      totalEpisodes: formData.totalEpisodes || undefined,
     };
 
     if (initialData?.completionDate) newEntry.completionDate = initialData.completionDate;
@@ -167,12 +176,18 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className={`relative w-full ${initialData ? 'max-w-4xl' : 'max-w-6xl'} bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-[750px]`}
+        className={`relative w-full ${
+          initialData
+            ? 'max-w-4xl'
+            : inputMode === 'manual'
+              ? 'max-w-3xl'
+              : 'max-w-6xl'
+        } bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-[750px]`}
       >
-        {/* Left Page: Discovery - Only show when creating new entry */}
+        {/* Left Page: Discovery - Only show when creating new entry and in TMDB mode */}
         {/* 电脑端：并排显示 | 手机端：根据步骤显示 */}
-        {!initialData && (
-          <section 
+        {!initialData && inputMode === 'tmdb' && (
+          <section
             className={`
               w-full md:w-1/3 p-6 md:p-8 border-r border-outline/15 flex flex-col gap-4 md:gap-6 bg-gray-50
               ${mobileStep === 'form' ? 'hidden md:flex' : 'flex'}
@@ -194,18 +209,42 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                 autoComplete="off"
               />
             </div>
+            {/* 筛选按钮 */}
+            <div className="flex gap-2 flex-shrink-0">
+              {(['all', 'tv', 'movie'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setSearchFilter(filter)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
+                    searchFilter === filter
+                      ? 'bg-primary text-on-primary'
+                      : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                  }`}
+                >
+                  {filter === 'all' ? '全部' : filter === 'tv' ? '电视剧' : '电影'}
+                </button>
+              ))}
+            </div>
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar min-h-0">
               {isSearching && (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
                 </div>
               )}
-              {!isSearching && searchQuery && searchResults.length === 0 && (
+              {!isSearching && searchQuery && searchResults.filter(item => {
+                if (searchFilter === 'all') return true;
+                if (searchFilter === 'tv') return isTVShow(item);
+                return !isTVShow(item);
+              }).length === 0 && (
                 <div className="text-center py-8 text-on-surface-variant">
-                  未找到相关剧集
+                  未找到相关{searchFilter === 'tv' ? '电视剧' : searchFilter === 'movie' ? '电影' : '剧集'}
                 </div>
               )}
-              {!isSearching && searchResults.map((item) => {
+              {!isSearching && searchResults.filter(item => {
+                if (searchFilter === 'all') return true;
+                if (searchFilter === 'tv') return isTVShow(item);
+                return !isTVShow(item);
+              }).map((item) => {
                 const title = isTVShow(item) ? item.name : item.title;
                 const date = isTVShow(item) ? item.first_air_date : item.release_date;
                 return (
@@ -231,7 +270,9 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                         <span className="text-[10px] px-1.5 py-0.5 bg-surface-variant text-on-surface-variant rounded">
                           {date?.substring(0, 4) || '未知'}
                         </span>
-                        {!isTVShow(item) && (
+                        {isTVShow(item) ? (
+                          <span className="text-[10px] px-1.5 py-0.5 bg-tertiary/20 text-tertiary rounded">电视剧</span>
+                        ) : (
                           <span className="text-[10px] px-1.5 py-0.5 bg-secondary/20 text-secondary rounded">电影</span>
                         )}
                       </div>
@@ -246,9 +287,48 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
         {/* Right Page: Diary Entry (Editable) */}
         {/* 电脑端：并排显示 | 手机端：根据步骤显示 */}
         <section className={`
-          flex-1 p-8 flex flex-col gap-6 bg-white overflow-y-auto custom-scrollbar
-          ${!initialData && mobileStep === 'search' ? 'hidden md:flex' : 'flex'}
+          p-8 flex flex-col gap-6 bg-white overflow-y-auto custom-scrollbar
+          ${!initialData && inputMode === 'tmdb' && mobileStep === 'search' ? 'hidden md:flex' : 'flex'}
+          ${!initialData && inputMode === 'tmdb' ? 'flex-1' : 'flex-1'}
         `}>
+          {/* 录入模式切换 - 仅创建新模式时显示 */}
+          {!initialData && (
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2 p-1 bg-surface-container rounded-lg">
+                <button
+                  onClick={() => {
+                    setInputMode('tmdb');
+                    setMobileStep('search');
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    inputMode === 'tmdb'
+                      ? 'bg-primary text-on-primary shadow-sm'
+                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                  }`}
+                >
+                  <Database className="w-4 h-4" />
+                  <span className="hidden sm:inline">TMDB 搜索</span>
+                  <span className="sm:hidden">搜索</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setInputMode('manual');
+                    setMobileStep('form');
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    inputMode === 'manual'
+                      ? 'bg-primary text-on-primary shadow-sm'
+                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                  }`}
+                >
+                  <Edit3 className="w-4 h-4" />
+                  <span className="hidden sm:inline">手工录入</span>
+                  <span className="sm:hidden">手工</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <span className="text-xs text-on-surface-variant italic">{new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
           </div>
@@ -326,6 +406,68 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                   ))}
                 </div>
               </div>
+
+              {/* 分集进度 - 仅在看状态显示 */}
+              {formData.status === 'watching' && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-primary">观看进度</label>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          type="number"
+                          min="0"
+                          max={formData.totalEpisodes || 999}
+                          value={formData.currentEpisode}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            currentEpisode: Math.max(0, parseInt(e.target.value) || 0)
+                          })}
+                          className="w-16 bg-surface-container-lowest border border-outline/10 rounded-lg px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-primary outline-none"
+                        />
+                        <span className="text-on-surface-variant">/</span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={formData.totalEpisodes || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            totalEpisodes: Math.max(1, parseInt(e.target.value) || 0)
+                          })}
+                          placeholder="总集数"
+                          className="w-16 bg-surface-container-lowest border border-outline/10 rounded-lg px-2 py-1.5 text-sm text-center focus:ring-1 focus:ring-primary outline-none"
+                        />
+                        <span className="text-on-surface-variant text-sm">集</span>
+                      </div>
+                      {/* 进度条 */}
+                      {formData.totalEpisodes > 0 && (
+                        <div className="relative h-2 bg-surface-container rounded-full overflow-hidden">
+                          <div
+                            className="absolute h-full bg-primary rounded-full transition-all duration-300"
+                            style={{
+                              width: `${Math.min(100, (formData.currentEpisode / formData.totalEpisodes) * 100)}%`
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    {/* +1集 按钮 */}
+                    <button
+                      onClick={() => setFormData({
+                        ...formData,
+                        currentEpisode: Math.min(
+                          (formData.totalEpisodes || 999),
+                          formData.currentEpisode + 1
+                        )
+                      })}
+                      className="flex-shrink-0 px-3 py-2 bg-primary text-on-primary rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors"
+                      title="看完一集"
+                    >
+                      +1集
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-primary">刷过次数</label>
@@ -489,25 +631,31 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
 
             <div className="flex flex-col gap-2">
               <label className="text-[10px] font-bold uppercase tracking-widest text-primary">日记感悟</label>
-              <div className="flex-1 bg-surface-container-lowest rounded-lg p-4 border border-outline/10 relative overflow-hidden min-h-[120px]">
-                <textarea 
-                  value={formData.reflection}
-                  onChange={(e) => setFormData({...formData, reflection: e.target.value})}
-                  className="w-full h-full bg-transparent border-none focus:ring-0 font-handwriting text-2xl leading-relaxed text-on-surface resize-none placeholder:text-outline/30" 
-                  placeholder="写下那一刻的真实感悟..."
-                ></textarea>
-                <div className="absolute bottom-4 right-4 opacity-5 pointer-events-none">
-                  <BookOpen className="w-12 h-12" />
+              <button
+                type="button"
+                onClick={() => setShowReflectionModal(true)}
+                className="flex-1 bg-surface-container-lowest rounded-lg p-4 border border-outline/10 text-left hover:border-primary/30 transition-colors group relative overflow-hidden min-h-[120px]"
+              >
+                {formData.reflection && formData.reflection !== '<p></p>' ? (
+                  <div
+                    className="font-handwriting text-lg leading-relaxed text-on-surface line-clamp-4"
+                    dangerouslySetInnerHTML={{ __html: formData.reflection }}
+                  />
+                ) : (
+                  <span className="text-on-surface-variant/50 italic">点击写下那一刻的真实感悟...</span>
+                )}
+                <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Edit3 className="w-4 h-4 text-primary" />
                 </div>
-              </div>
+              </button>
             </div>
           </div>
 
           <div className="mt-6 pt-6 border-t border-outline/10 flex justify-end gap-4">
-            {/* 手机端：在表单页面显示返回搜索按钮 */}
-            {!initialData && (
-              <button 
-                onClick={() => setMobileStep('search')} 
+            {/* 手机端：在TMDB模式的表单页面显示返回搜索按钮 */}
+            {!initialData && inputMode === 'tmdb' && (
+              <button
+                onClick={() => setMobileStep('search')}
                 className="md:hidden px-6 py-2.5 text-on-surface-variant font-bold text-sm hover:bg-surface-container transition-colors rounded-lg"
               >
                 返回搜索
@@ -535,6 +683,24 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
           <X className="w-6 h-6" />
         </button>
       </motion.div>
+
+      {/* 感悟编辑弹窗 */}
+      {showReflectionModal && (
+        <ReflectionModal
+          content={formData.reflection}
+          title={formData.title}
+          tags={formData.tags}
+          onClose={() => setShowReflectionModal(false)}
+          onSave={(content, newTags) => {
+            setFormData({
+              ...formData,
+              reflection: content,
+              ...(newTags && { tags: newTags })
+            });
+            setShowReflectionModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }

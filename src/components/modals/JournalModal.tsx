@@ -7,6 +7,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { X, Edit3, Trash2, Heart } from 'lucide-react';
 import { DramaEntry } from '../../types';
+import { RichTextContent } from '../editor/RichTextEditor';
 
 interface JournalModalProps {
   entry: DramaEntry;
@@ -106,6 +107,23 @@ export function JournalModal({ entry, onClose, onEdit, onDelete }: JournalModalP
               <div><span className="font-bold opacity-60">主演：</span>{entry.actors.join(' / ')}</div>
               <div><span className="font-bold opacity-60">播出：</span>{entry.releaseDate}</div>
               <div><span className="font-bold opacity-60">首次观看：</span>{entry.firstEncounter || '未记录'}</div>
+              {/* 分���进度 */}
+              {entry.status === 'watching' && entry.totalEpisodes && entry.totalEpisodes > 0 && (
+                <div className="mt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold opacity-60">观看进度：</span>
+                    <span className="text-primary font-bold">{entry.currentEpisode || 0} / {entry.totalEpisodes} 集</span>
+                  </div>
+                  <div className="mt-1.5 h-2 bg-surface-container rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-300"
+                      style={{
+                        width: `${Math.min(100, ((entry.currentEpisode || 0) / entry.totalEpisodes) * 100)}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </header>
 
@@ -119,9 +137,9 @@ export function JournalModal({ entry, onClose, onEdit, onDelete }: JournalModalP
 
             <section className="space-y-3 md:space-y-4">
               <h3 className="text-xs font-bold text-primary tracking-[0.2em] uppercase">个人总结</h3>
-              <div className="font-handwriting text-xl md:text-3xl leading-relaxed text-on-surface/80">
-                <p>{entry.reflection}</p>
-                <p className="mt-4 md:mt-8 text-right pr-4 italic">— 拾光者</p>
+              <div className="text-on-surface/80">
+                <RichTextContent content={entry.reflection} />
+                <p className="mt-4 md:mt-8 text-right pr-4 italic text-on-surface-variant">— 拾光者</p>
               </div>
             </section>
           </article>

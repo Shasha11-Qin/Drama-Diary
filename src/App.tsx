@@ -12,6 +12,7 @@ import { Navbar } from './components/layout/Navbar';
 import { EntryHeader, EntryList } from './components/entries/EntryList';
 import { EntryModal } from './components/modals/EntryModal';
 import { JournalModal } from './components/modals/JournalModal';
+import { ImportModal } from './components/modals/ImportModal';
 import { useAuth } from './hooks/useAuth';
 import { useEntries } from './hooks/useEntries';
 import { useSearch } from './hooks/useSearch';
@@ -31,6 +32,7 @@ function AppContent() {
   const { searchQuery, setSearchQuery, searchResults } = useSearch(entries);
   
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<DramaEntry | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<DramaEntry | null>(null);
   const [activeStatus, setActiveStatus] = useState<'watching' | 'completed' | 'planned'>('completed');
@@ -94,6 +96,16 @@ function AppContent() {
     setSortMode(prev => prev === 'rating' ? 'year' : 'rating');
   };
 
+  // 批量导入处理
+  const handleImport = async (importedEntries: DramaEntry[]) => {
+    // 逐条保存
+    for (const entry of importedEntries) {
+      await saveEntry(entry);
+    }
+    // 刷新列表
+    await fetchEntries();
+  };
+
   // 加载状态
   if (loading || !authChecked) {
     return (
@@ -111,11 +123,12 @@ function AppContent() {
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden">
       {/* Top Navigation */}
-      <Navbar 
-        user={user} 
+      <Navbar
+        user={user}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onLogout={handleLogout}
+        onImport={() => setIsImportModalOpen(true)}
       />
 
       {/* Main Content */}
@@ -151,7 +164,7 @@ function AppContent() {
       {/* Modals & Overlays */}
       <AnimatePresence>
         {isEntryModalOpen && (
-          <EntryModal 
+          <EntryModal
             onClose={handleCloseEntryModal}
             onSave={handleSaveEntry}
             initialData={editingEntry || undefined}
@@ -167,6 +180,14 @@ function AppContent() {
           />
         )}
       </AnimatePresence>
+
+      {/* Import Modal */}
+      {isImportModalOpen && (
+        <ImportModal
+          onClose={() => setIsImportModalOpen(false)}
+          onImport={handleImport}
+        />
+      )}
 
       {/* Subtle Background Tint */}
       <div className="fixed inset-0 pointer-events-none bg-gradient-to-tr from-primary/5 to-transparent mix-blend-multiply z-0"></div>

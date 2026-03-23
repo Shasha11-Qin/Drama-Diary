@@ -56,6 +56,8 @@ export function useEntries(user: User | null, authChecked: boolean) {
         completionDate: item.completion_date,
         status: item.status || 'completed',
         isMustWatch: item.is_must_watch || false,
+        currentEpisode: item.current_episode,
+        totalEpisodes: item.total_episodes,
       }));
 
       setEntries(formattedData);
@@ -89,6 +91,8 @@ export function useEntries(user: User | null, authChecked: boolean) {
         completion_date: entry.completionDate,
         status: entry.status,
         is_must_watch: entry.isMustWatch,
+        current_episode: entry.currentEpisode,
+        total_episodes: entry.totalEpisodes,
       };
 
       if (entry.id) {

@@ -16,6 +16,9 @@ export interface DramaEntry {
   completionDate?: string;
   status: 'completed' | 'watching' | 'planned';
   isMustWatch?: boolean;
+  // 分集进度
+  currentEpisode?: number;  // 当前看到第几集
+  totalEpisodes?: number;   // 总集数
 }
 
 export const MOCK_ENTRIES: DramaEntry[] = [

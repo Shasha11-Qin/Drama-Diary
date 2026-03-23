@@ -13,16 +13,22 @@ export {
   type TMDBMovieResult,
   type TMDBCredit,
   type TMDBDetail,
-  
+  type TMDBImage,
+
   // 搜索函数
   searchTVShows,
   searchMovies,
   searchAll,
-  
+
   // 详情函数
   getTVDetail,
   getMovieDetail,
-  
+
+  // 剧照函数
+  getTVImages,
+  getMovieImages,
+  getStillsByTitle,
+
   // 工具函数
   isTVShow,
 } from './api/tmdbProxy';

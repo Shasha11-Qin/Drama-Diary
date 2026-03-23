@@ -87,6 +87,24 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = ({ entry, onClick, 
           </span>
         </div>
 
+        {/* 观看进度 - 仅在看状态且有集数信息时显示 */}
+        {entry.status === 'watching' && entry.totalEpisodes && entry.totalEpisodes > 0 && (
+          <div className="mt-2">
+            <div className="flex items-center justify-between text-[10px] text-gray-500 mb-1">
+              <span>进度</span>
+              <span className="text-primary font-medium">{entry.currentEpisode || 0}/{entry.totalEpisodes}</span>
+            </div>
+            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-300"
+                style={{
+                  width: `${Math.min(100, ((entry.currentEpisode || 0) / entry.totalEpisodes) * 100)}%`
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* 播出平台 */}
         <div className="mt-auto pt-2 text-[10px] text-gray-400 truncate">
           {entry.platform}

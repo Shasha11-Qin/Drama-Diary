@@ -195,3 +195,72 @@ export async function getMovieDetail(id: number): Promise<TMDBDetail | null> {
 export function isTVShow(result: TMDBSearchResult | TMDBMovieResult): result is TMDBSearchResult {
   return 'name' in result;
 }
+
+/**
+ * 剧照/海报图片接口返回
+ */
+export interface TMDBImage {
+  file_path: string;
+  aspect_ratio: number;
+  height: number;
+  width: number;
+  vote_average: number;
+  vote_count: number;
+}
+
+/**
+ * 获取电视剧剧照
+ */
+export async function getTVImages(id: number): Promise<TMDBImage[]> {
+  try {
+    const data = await proxyToTMDB(`/tv/${id}/images`, {
+      include_image_language: 'zh,null'
+    });
+    return data.stills || [];
+  } catch (error) {
+    console.error('Get TV images error:', error);
+    return [];
+  }
+}
+
+/**
+ * 获取电影剧照
+ */
+export async function getMovieImages(id: number): Promise<TMDBImage[]> {
+  try {
+    const data = await proxyToTMDB(`/movie/${id}/images`, {
+      include_image_language: 'zh,null'
+    });
+    return data.backdrops || [];
+  } catch (error) {
+    console.error('Get movie images error:', error);
+    return [];
+  }
+}
+
+/**
+ * 根据剧名搜索并获取剧照
+ */
+export async function getStillsByTitle(title: string): Promise<string[]> {
+  try {
+    const results = await searchAll(title);
+    if (results.length === 0) return [];
+
+    const firstResult = results[0];
+    const isTV = isTVShow(firstResult);
+
+    const images = isTV
+      ? await getTVImages(firstResult.id)
+      : await getMovieImages(firstResult.id);
+
+    // 返回图片 URL 列表
+    const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
+    return images
+      .sort((a, b) => b.vote_average - a.vote_average)
+      .slice(0, 6)
+      .map(img => `${TMDB_IMAGE_BASE}/w780${img.file_path}`);
+  } catch (error) {
+    console.error('Get stills by title error:', error);
+    return [];
+  }
+}

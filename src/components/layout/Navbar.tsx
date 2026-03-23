@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Search, LogOut } from 'lucide-react';
+import { Search, LogOut, Upload } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
 interface NavbarProps {
@@ -12,9 +12,10 @@ interface NavbarProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onLogout: () => void;
+  onImport: () => void;
 }
 
-export function Navbar({ user, searchQuery, onSearchChange, onLogout }: NavbarProps) {
+export function Navbar({ user, searchQuery, onSearchChange, onLogout, onImport }: NavbarProps) {
   if (!user) return null;
 
   return (
@@ -39,10 +40,18 @@ export function Navbar({ user, searchQuery, onSearchChange, onLogout }: NavbarPr
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onImport}
+            className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors text-sm font-medium"
+            title="导入数据"
+          >
+            <Upload className="w-4 h-4" />
+            <span className="hidden sm:inline">导入</span>
+          </button>
           <button
             onClick={onLogout}
-            className="p-2 hover:bg-surface-container rounded-full transition-colors text-on-surface-variant flex items-center gap-2"
+            className="p-2 hover:bg-surface-container rounded-full transition-colors text-on-surface-variant"
             title="退出登录"
           >
             <LogOut className="w-5 h-5" />
@@ -63,6 +72,13 @@ export function Navbar({ user, searchQuery, onSearchChange, onLogout }: NavbarPr
             <span className="font-serif text-sm text-outline opacity-60">剧影日记</span>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={onImport}
+              className="p-2 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors"
+              title="导入数据"
+            >
+              <Upload className="w-5 h-5" />
+            </button>
             <button
               onClick={onLogout}
               className="p-2 hover:bg-surface-container rounded-full transition-colors text-on-surface-variant"
