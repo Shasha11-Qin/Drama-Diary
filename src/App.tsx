@@ -14,16 +14,24 @@ import { EntryHeader, EntryList } from './components/entries/EntryList';
 import { EntryModal } from './components/modals/EntryModal';
 import { JournalModal } from './components/modals/JournalModal';
 import { ImportModal } from './components/modals/ImportModal';
+import { PWAInstallPrompt, useServiceWorker } from './components/PWAInstallPrompt';
 import { useAuth } from './hooks/useAuth';
 import { useEntries } from './hooks/useEntries';
 import { useSearch } from './hooks/useSearch';
 import { DramaEntry } from './types';
 
 export default function App() {
+  // 注册 Service Worker
+  useServiceWorker();
+
   return (
-    <ErrorBoundary>
-      <AppContent />
-    </ErrorBoundary>
+    <>
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
+      {/* PWA 安装提示 - 放在 ErrorBoundary 外部 */}
+      <PWAInstallPrompt />
+    </>
   );
 }
 
