@@ -12,8 +12,13 @@ export function PWAInstallPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
+    // 检测 iOS
+    const detectIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    setIsIOS(detectIOS);
+
     // 检查是否已经安装（standalone 模式）
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
     if (isStandalone) {
@@ -22,15 +27,28 @@ export function PWAInstallPrompt() {
     }
 
     // 检查是否已经关闭过提示
-    const hasDismissed = localStorage.getItem('pwa-install-dismissed');
-    if (hasDismissed) return;
+    const dismissed = localStorage.getItem('pwa-install-dismissed');
+    if (dismissed) {
+      // 如果是 iOS，每次访问都显示引导
+      if (detectIOS) {
+        setShowPrompt(true);
+        setTimeout(() => setIsVisible(true), 100);
+      }
+      return;
+    }
 
-    // 监听 beforeinstallprompt 事件
+    // iOS 始终显示引导提示
+    if (detectIOS) {
+      setShowPrompt(true);
+      setTimeout(() => setIsVisible(true), 100);
+      return;
+    }
+
+    // Android/其他平台：监听 beforeinstallprompt 事件
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowPrompt(true);
-      // 延迟显示动画
       setTimeout(() => setIsVisible(true), 100);
     };
 
@@ -61,25 +79,16 @@ export function PWAInstallPrompt() {
     setIsVisible(false);
     setTimeout(() => {
       setShowPrompt(false);
-      // 记住用户的选择，一周内不再显示
-      localStorage.setItem('pwa-install-dismissed', Date.now().toString());
-      // 设置过期时间（7天）
-      setTimeout(() => {
-        localStorage.removeItem('pwa-install-dismissed');
-      }, 7 * 24 * 60 * 60 * 1000);
+      // Android 保存关闭状态，iOS 不保存（每次都引导）
+      if (!isIOS) {
+        localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+      }
     }, 300);
   };
 
-  // 检测是否为 iOS Safari
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isSafari = /Safari/.test(navigator.userAgent) && /Apple Computer/.test(navigator.userAgent);
-
-  // iOS 需要手动引导用户添加到主屏幕
-  const showIOSPrompt = isIOS || (isSafari && 'ontouchend' in document);
-
   return (
     <AnimatePresence>
-      {(showPrompt || showIOSPrompt) && (
+      {showPrompt && (
         <motion.div
           initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 100 }}
@@ -96,7 +105,7 @@ export function PWAInstallPrompt() {
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-gray-900 mb-1">添加到主屏幕</h3>
                 <p className="text-sm text-gray-500 leading-relaxed">
-                  {showIOSPrompt
+                  {isIOS
                     ? '点击 Safari 底部的分享按钮，然后选择"添加到主屏幕"，即可像 APP 一样使用'
                     : '将 Drama Diary 添加到主屏幕，随时记录看剧感悟'
                   }
@@ -111,7 +120,7 @@ export function PWAInstallPrompt() {
               </button>
             </div>
 
-            {!showIOSPrompt && (
+            {!isIOS && (
               <div className="mt-4 flex gap-2">
                 <button
                   onClick={handleDismiss}
