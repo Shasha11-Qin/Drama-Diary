@@ -8,6 +8,7 @@ import { Edit3 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthForm } from './components/auth/AuthForm';
+import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
 import { Navbar } from './components/layout/Navbar';
 import { EntryHeader, EntryList } from './components/entries/EntryList';
 import { EntryModal } from './components/modals/EntryModal';
@@ -28,6 +29,12 @@ export default function App() {
 
 function AppContent() {
   const { user, authChecked, handleLogout } = useAuth();
+
+  // 检查是否是从重置密码链接进入（放在最前面，优先处理）
+  const isRecoveryLink = new URLSearchParams(window.location.search).get('type') === 'recovery';
+  if (isRecoveryLink) {
+    return <ResetPasswordPage />;
+  }
   const { entries, loading, saving, fetchEntries, saveEntry, deleteEntry, setEntries } = useEntries(user, authChecked);
   const { searchQuery, setSearchQuery, searchResults } = useSearch(entries);
   

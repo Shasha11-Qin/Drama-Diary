@@ -48,7 +48,7 @@ export function ReflectionModal({ content, title, tags: initialTags = [], onClos
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-lg max-w-none focus:outline-none min-h-[300px] font-handwriting text-2xl leading-relaxed text-on-surface',
+        class: 'prose prose-lg max-w-none focus:outline-none min-h-[150px] sm:min-h-[300px] font-handwriting text-lg sm:text-2xl leading-relaxed text-on-surface',
       },
     },
   });
@@ -76,6 +76,7 @@ export function ReflectionModal({ content, title, tags: initialTags = [], onClos
   // AI 润色
   const handlePolish = async () => {
     const text = getPlainText();
+    console.log('Polish clicked, text length:', text?.length, 'text:', text);
     if (!text) {
       setAiError('请先写一些内容');
       return;
@@ -88,9 +89,9 @@ export function ReflectionModal({ content, title, tags: initialTags = [], onClos
       const result = await polishText(text, title);
       setPolishedText(result);
       setShowPolishResult(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Polish error:', err);
-      setAiError('润色失败，请稍后重试');
+      setAiError(err.message || '润色失败，请稍后重试');
     } finally {
       setIsPolishing(false);
     }
@@ -179,12 +180,12 @@ export function ReflectionModal({ content, title, tags: initialTags = [], onClos
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-on-background/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-on-background/60 backdrop-blur-sm overflow-y-auto">
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="relative w-full max-w-4xl h-[90vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden m-4"
+        className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden m-4 my-4"
       >
         {/* 顶部栏 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline/10">
@@ -309,8 +310,12 @@ export function ReflectionModal({ content, title, tags: initialTags = [], onClos
           <div className="flex items-center gap-3 mb-4">
             <button
               onClick={handlePolish}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                handlePolish();
+              }}
               disabled={isPolishing || isExtractingTags}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary/80 text-on-primary rounded-lg text-sm font-medium hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary/80 text-on-primary rounded-lg text-sm font-medium hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
             >
               {isPolishing ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -321,8 +326,12 @@ export function ReflectionModal({ content, title, tags: initialTags = [], onClos
             </button>
             <button
               onClick={handleExtractTags}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                handleExtractTags();
+              }}
               disabled={isPolishing || isExtractingTags}
-              className="flex items-center gap-2 px-4 py-2 bg-surface-container text-on-surface-variant rounded-lg text-sm font-medium hover:bg-surface-container-high transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-surface-container text-on-surface-variant rounded-lg text-sm font-medium hover:bg-surface-container-high transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
             >
               {isExtractingTags ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

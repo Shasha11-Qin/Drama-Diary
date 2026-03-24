@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Mail, Lock, LogIn, UserPlus, ChevronDown, Check, Trash2 } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, ChevronDown, Check, Trash2, ArrowLeft } from 'lucide-react';
 import { supabase } from '../../supabase';
 
 interface AuthFormProps {
@@ -15,7 +15,7 @@ const REMEMBERED_EMAILS_KEY = 'drama_diary_emails';
 const LAST_USED_EMAIL_KEY = 'drama_diary_last_email';
 
 export function AuthForm({ onAuthSuccess }: AuthFormProps) {
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgotPassword'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
@@ -171,6 +171,26 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthLoading(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+
+      setAuthError('重置密码链接已发送到您的邮箱，请查收。');
+    } catch (error: any) {
+      setAuthError(error.message || '发送失败，请重试');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   const selectEmail = (selectedEmail: string) => {
     setEmail(selectedEmail);
     setShowEmailDropdown(false);
@@ -202,30 +222,34 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 space-y-5 sm:space-y-6">
-          <div className="flex border-b border-gray-200">
-            <button
-              onClick={() => { setAuthMode('login'); setAuthError(''); }}
-              className={`flex-1 py-3 text-center font-medium transition-colors ${
-                authMode === 'login'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              登录
-            </button>
-            <button
-              onClick={() => { setAuthMode('signup'); setAuthError(''); }}
-              className={`flex-1 py-3 text-center font-medium transition-colors ${
-                authMode === 'signup'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              注册
-            </button>
-          </div>
+          {authMode === 'forgotPassword' ? (
+            <h2 className="text-xl font-bold text-center text-gray-800">重置密码</h2>
+          ) : (
+            <div className="flex border-b border-gray-200">
+              <button
+                onClick={() => { setAuthMode('login'); setAuthError(''); }}
+                className={`flex-1 py-3 text-center font-medium transition-colors ${
+                  authMode === 'login'
+                    ? 'text-primary border-b-2 border-primary'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                登录
+              </button>
+              <button
+                onClick={() => { setAuthMode('signup'); setAuthError(''); }}
+                className={`flex-1 py-3 text-center font-medium transition-colors ${
+                  authMode === 'signup'
+                    ? 'text-primary border-b-2 border-primary'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                注册
+              </button>
+            </div>
+          )}
 
-          <form onSubmit={authMode === 'login' ? handleLogin : handleSignup} className="space-y-4 sm:space-y-5">
+          <form onSubmit={authMode === 'login' ? handleLogin : authMode === 'signup' ? handleSignup : handleForgotPassword} className="space-y-4 sm:space-y-5">
             {/* 邮箱输入框 - 带下拉选择 */}
             <div className="space-y-2" ref={dropdownRef}>
               <label className="text-sm font-medium text-gray-700">邮箱</label>
@@ -288,26 +312,33 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
               )}
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">密码</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={authMode === 'login' ? '请输入密码' : '请设置密码（至少6位）'}
-                  required
-                  minLength={authMode === 'signup' ? 6 : undefined}
-                  autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
-                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-base"
-                />
+            {authMode !== 'forgotPassword' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">密码</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={authMode === 'login' ? '请输入密码' : '请设置密码（至少6位）'}
+                    required
+                    minLength={authMode === 'signup' ? 6 : undefined}
+                    autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-base"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* 记住我选项 - 只在登录模式显示 */}
+            {authMode === 'forgotPassword' && (
+              <p className="text-sm text-gray-500 text-center">
+                输入您注册时使用的邮箱，我们会发送重置密码链接
+              </p>
+            )}
             {authMode === 'login' && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setRememberMe(!rememberMe)}
@@ -319,6 +350,13 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
                     {rememberMe && <Check className="w-3.5 h-3.5 text-white" />}
                   </div>
                   记住账号
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('forgotPassword'); setAuthError(''); }}
+                  className="text-sm text-primary hover:underline"
+                >
+                  忘记密码？
                 </button>
               </div>
             )}
@@ -345,13 +383,27 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
                   <LogIn className="w-5 h-5" />
                   登录
                 </>
-              ) : (
+              ) : authMode === 'signup' ? (
                 <>
                   <UserPlus className="w-5 h-5" />
                   注册
                 </>
+              ) : (
+                '发送重置链接'
               )}
             </button>
+
+            {/* 返回登录按钮 - 忘记密码模式 */}
+            {authMode === 'forgotPassword' && (
+              <button
+                type="button"
+                onClick={() => { setAuthMode('login'); setAuthError(''); }}
+                className="w-full flex items-center justify-center gap-2 py-3 text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                返回登录
+              </button>
+            )}
           </form>
         </div>
       </div>
