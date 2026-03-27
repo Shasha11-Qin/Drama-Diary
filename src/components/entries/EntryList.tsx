@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Star, History } from 'lucide-react';
+import { Star, History, Settings, Trash2, X } from 'lucide-react';
 import { DramaEntry } from '../../types';
 import { DiaryEntryCard } from './DiaryEntryCard';
 
@@ -17,6 +17,9 @@ interface EntryListProps {
   onStatusChange: (status: 'watching' | 'completed' | 'planned') => void;
   onSortModeChange: () => void;
   onEntryClick: (entry: DramaEntry) => void;
+  selectMode?: boolean;
+  selectedIds?: string[];
+  onSelect?: (id: string) => void;
 }
 
 export function EntryList({
@@ -27,7 +30,10 @@ export function EntryList({
   searchResults,
   onStatusChange,
   onSortModeChange,
-  onEntryClick
+  onEntryClick,
+  selectMode = false,
+  selectedIds = [],
+  onSelect
 }: EntryListProps) {
   // 当有搜索词时，显示搜索结果（不受状态标签限制）
   if (searchQuery.trim()) {
@@ -47,6 +53,9 @@ export function EntryList({
             key={entry.id}
             entry={entry}
             onClick={() => onEntryClick(entry)}
+            selectMode={selectMode}
+            selected={selectedIds.includes(entry.id)}
+            onSelect={onSelect}
           />
         ))}
       </div>
@@ -76,6 +85,9 @@ export function EntryList({
             key={entry.id}
             entry={entry}
             onClick={() => onEntryClick(entry)}
+            selectMode={selectMode}
+            selected={selectedIds.includes(entry.id)}
+            onSelect={onSelect}
           />
         ))}
       </div>
@@ -97,8 +109,11 @@ export function EntryList({
           <DiaryEntryCard
             key={entry.id}
             entry={entry}
-            rank={index + 1}
+            rank={selectMode ? undefined : index + 1}
             onClick={() => onEntryClick(entry)}
+            selectMode={selectMode}
+            selected={selectedIds.includes(entry.id)}
+            onSelect={onSelect}
           />
         ))}
       </div>
@@ -133,6 +148,9 @@ export function EntryList({
                     key={entry.id}
                     entry={entry}
                     onClick={() => onEntryClick(entry)}
+                    selectMode={selectMode}
+                    selected={selectedIds.includes(entry.id)}
+                    onSelect={onSelect}
                   />
                 ))}
             </div>
@@ -149,6 +167,11 @@ interface EntryHeaderProps {
   sortMode: 'rating' | 'year';
   onStatusChange: (status: 'watching' | 'completed' | 'planned') => void;
   onSortModeChange: () => void;
+  selectMode?: boolean;
+  selectedCount?: number;
+  onToggleSelectMode?: () => void;
+  onSelectAll?: () => void;
+  onDeleteSelected?: () => void;
 }
 
 export function EntryHeader({
@@ -156,10 +179,55 @@ export function EntryHeader({
   activeStatus,
   sortMode,
   onStatusChange,
-  onSortModeChange
+  onSortModeChange,
+  selectMode = false,
+  selectedCount = 0,
+  onToggleSelectMode,
+  onSelectAll,
+  onDeleteSelected
 }: EntryHeaderProps) {
+  const statusCount = {
+    completed: entries.filter(e => e.status === 'completed').length,
+    watching: entries.filter(e => e.status === 'watching').length,
+    planned: entries.filter(e => e.status === 'planned').length
+  };
+
   return (
     <header className="mb-6">
+      {/* 选择模式下的操作栏 */}
+      {selectMode && (
+        <div className="flex items-center justify-between mb-4 p-3 bg-primary/10 rounded-lg">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onToggleSelectMode}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white text-on-surface-variant text-sm font-medium hover:bg-gray-100 transition-colors"
+            >
+              <X className="w-4 h-4" />
+              取消
+            </button>
+            <span className="text-sm text-on-surface-variant">
+              已选择 <span className="font-bold text-primary">{selectedCount}</span> 项
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onSelectAll}
+              className="px-3 py-1.5 rounded-lg bg-white text-on-surface-variant text-sm font-medium hover:bg-gray-100 transition-colors"
+            >
+              {selectedCount === statusCount[activeStatus] ? '取消全选' : '全选'}
+            </button>
+            <button
+              onClick={onDeleteSelected}
+              disabled={selectedCount === 0}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-error text-white text-sm font-medium hover:bg-error/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Trash2 className="w-4 h-4" />
+              删除
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 状态标签切换 */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         {/* 状态标签组 - 顺序：已看完、在看、想看 */}
@@ -172,7 +240,7 @@ export function EntryHeader({
                 : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
             }`}
           >
-            已看完 <span className="opacity-80">({entries.filter(e => e.status === 'completed').length})</span>
+            已看完 <span className="opacity-80">({statusCount.completed})</span>
           </button>
           <button
             onClick={() => onStatusChange('watching')}
@@ -182,7 +250,7 @@ export function EntryHeader({
                 : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
             }`}
           >
-            在看 <span className="opacity-80">({entries.filter(e => e.status === 'watching').length})</span>
+            在看 <span className="opacity-80">({statusCount.watching})</span>
           </button>
           <button
             onClick={() => onStatusChange('planned')}
@@ -192,29 +260,43 @@ export function EntryHeader({
                 : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
             }`}
           >
-            想看 <span className="opacity-80">({entries.filter(e => e.status === 'planned').length})</span>
+            想看 <span className="opacity-80">({statusCount.planned})</span>
           </button>
         </div>
 
-        {/* 排序切换按钮 - 仅在"已看完"状态显示 */}
-        {activeStatus === 'completed' && (
-          <button
-            onClick={onSortModeChange}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant text-xs font-medium hover:bg-surface-container-high transition-colors"
-          >
-            {sortMode === 'rating' ? (
-              <>
-                <Star className="w-4 h-4" />
-                按喜爱排序
-              </>
-            ) : (
-              <>
-                <History className="w-4 h-4" />
-                按年份分组
-              </>
-            )}
-          </button>
-        )}
+        {/* 右侧按钮组 */}
+        <div className="flex items-center gap-2">
+          {/* 管理按钮 - 非选择模式时显示 */}
+          {!selectMode && (
+            <button
+              onClick={onToggleSelectMode}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant text-xs font-medium hover:bg-surface-container-high transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              管理
+            </button>
+          )}
+
+          {/* 排序切换按钮 - 仅在"已看完"状态且非选择模式时显示 */}
+          {activeStatus === 'completed' && !selectMode && (
+            <button
+              onClick={onSortModeChange}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant text-xs font-medium hover:bg-surface-container-high transition-colors"
+            >
+              {sortMode === 'rating' ? (
+                <>
+                  <Star className="w-4 h-4" />
+                  按喜爱排序
+                </>
+              ) : (
+                <>
+                  <History className="w-4 h-4" />
+                  按年份分组
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </header>
   );

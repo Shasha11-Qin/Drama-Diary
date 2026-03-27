@@ -5,16 +5,26 @@
 
 import React from 'react';
 import { motion } from 'motion/react';
-import { Heart } from 'lucide-react';
+import { Heart, Check } from 'lucide-react';
 import { DramaEntry } from '../../types';
 
 interface DiaryEntryCardProps {
   entry: DramaEntry;
   onClick: () => void;
   rank?: number;
+  selectMode?: boolean;
+  selected?: boolean;
+  onSelect?: (id: string) => void;
 }
 
-export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = ({ entry, onClick, rank }) => {
+export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = ({
+  entry,
+  onClick,
+  rank,
+  selectMode = false,
+  selected = false,
+  onSelect
+}) => {
   const getRatingEmoji = (rating: number) => {
     if (rating <= 1) return '😞';
     if (rating <= 2) return '😕';
@@ -31,11 +41,22 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = ({ entry, onClick, 
     return '超爱';
   };
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (selectMode && onSelect) {
+      e.stopPropagation();
+      onSelect(entry.id);
+    } else {
+      onClick();
+    }
+  };
+
   return (
     <motion.div
       layoutId={`entry-${entry.id}`}
-      onClick={onClick}
-      className="group bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all cursor-pointer flex flex-col border border-gray-100"
+      onClick={handleClick}
+      className={`group bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all cursor-pointer flex flex-col border-2 ${
+        selectMode && selected ? 'border-primary ring-2 ring-primary/30' : 'border-gray-100'
+      }`}
     >
       {/* 海报区域 - 2:3 宽高比 */}
       <div className="relative w-full aspect-[2/3] bg-gray-200 overflow-hidden">
@@ -43,7 +64,7 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = ({ entry, onClick, 
           <img
             src={entry.poster}
             alt={entry.title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className={`w-full h-full object-cover transition-transform duration-300 ${!selectMode ? 'group-hover:scale-105' : ''}`}
             referrerPolicy="no-referrer"
           />
         ) : (
@@ -51,8 +72,20 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = ({ entry, onClick, 
             海报
           </div>
         )}
-        {/* 排名序号 */}
-        {rank && (
+        {/* 选择模式下的复选框 */}
+        {selectMode && (
+          <div
+            className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md transition-colors ${
+              selected
+                ? 'bg-primary text-white'
+                : 'bg-white/90 text-gray-400 border-2 border-gray-300'
+            }`}
+          >
+            {selected && <Check className="w-4 h-4" />}
+          </div>
+        )}
+        {/* 排名序号 - 非选择模式时显示 */}
+        {!selectMode && rank && (
           <div className="absolute top-2 left-2 w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold shadow-md">
             {rank}
           </div>

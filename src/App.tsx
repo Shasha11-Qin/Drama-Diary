@@ -43,15 +43,17 @@ function AppContent() {
   if (isRecoveryLink) {
     return <ResetPasswordPage />;
   }
-  const { entries, loading, saving, fetchEntries, saveEntry, deleteEntry, setEntries } = useEntries(user, authChecked);
+  const { entries, loading, saving, fetchEntries, saveEntry, deleteEntry, deleteEntries, setEntries } = useEntries(user, authChecked);
   const { searchQuery, setSearchQuery, searchResults } = useSearch(entries);
-  
+
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<DramaEntry | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<DramaEntry | null>(null);
   const [activeStatus, setActiveStatus] = useState<'watching' | 'completed' | 'planned'>('completed');
   const [sortMode, setSortMode] = useState<'rating' | 'year'>('rating');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // 用户登录后加载数据
   useEffect(() => {
@@ -111,6 +113,47 @@ function AppContent() {
     setSortMode(prev => prev === 'rating' ? 'year' : 'rating');
   };
 
+  // 切换状态标签时清空选择
+  const handleStatusChange = (status: 'watching' | 'completed' | 'planned') => {
+    setActiveStatus(status);
+    setSelectedIds([]);
+  };
+
+  const handleToggleSelectMode = () => {
+    setSelectMode(prev => !prev);
+    setSelectedIds([]);
+  };
+
+  const handleSelect = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id)
+        ? prev.filter(i => i !== id)
+        : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    const statusEntries = entries.filter(e => e.status === activeStatus);
+    if (selectedIds.length === statusEntries.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(statusEntries.map(e => e.id));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`确定要删除选中的 ${selectedIds.length} 条记录吗？此操作无法撤销。`)) return;
+
+    try {
+      await deleteEntries(selectedIds);
+      setSelectedIds([]);
+      setSelectMode(false);
+    } catch {
+      alert('删除失败，请重试');
+    }
+  };
+
   // 批量导入处理
   const handleImport = async (importedEntries: DramaEntry[]) => {
     // 逐条保存
@@ -152,8 +195,13 @@ function AppContent() {
           entries={entries}
           activeStatus={activeStatus}
           sortMode={sortMode}
-          onStatusChange={setActiveStatus}
+          selectMode={selectMode}
+          selectedCount={selectedIds.length}
+          onStatusChange={handleStatusChange}
           onSortModeChange={handleSortModeChange}
+          onToggleSelectMode={handleToggleSelectMode}
+          onSelectAll={handleSelectAll}
+          onDeleteSelected={handleDeleteSelected}
         />
 
         <EntryList
@@ -162,9 +210,12 @@ function AppContent() {
           sortMode={sortMode}
           searchQuery={searchQuery}
           searchResults={searchResults}
-          onStatusChange={setActiveStatus}
+          onStatusChange={handleStatusChange}
           onSortModeChange={handleSortModeChange}
           onEntryClick={setSelectedEntry}
+          selectMode={selectMode}
+          selectedIds={selectedIds}
+          onSelect={handleSelect}
         />
       </main>
 

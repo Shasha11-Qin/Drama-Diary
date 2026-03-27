@@ -137,6 +137,25 @@ export function useEntries(user: User | null, authChecked: boolean) {
     }
   }, [fetchEntries]);
 
+  const deleteEntries = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+
+    try {
+      const { error } = await supabase
+        .from('dramas')
+        .delete()
+        .in('id', ids);
+
+      if (error) throw error;
+
+      // 重新获取数据
+      await fetchEntries();
+    } catch (error) {
+      console.error('Error deleting entries:', error);
+      throw error;
+    }
+  }, [fetchEntries]);
+
   return {
     entries,
     loading,
@@ -144,6 +163,7 @@ export function useEntries(user: User | null, authChecked: boolean) {
     fetchEntries,
     saveEntry,
     deleteEntry,
+    deleteEntries,
     setEntries
   };
 }
