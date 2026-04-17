@@ -39,7 +39,16 @@ function AppContent() {
   const { user, authChecked, handleLogout } = useAuth();
 
   // 检查是否是从重置密码链接进入（放在最前面，优先处理）
-  const isRecoveryLink = new URLSearchParams(window.location.search).get('type') === 'recovery';
+  // 支持从 query、hash（#...）或路径中识别重置标志，以兼容不同打开方式（右键新标签、邮件跳转等）
+  const searchParams = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const pathname = window.location.pathname || '';
+  const isRecoveryLink =
+    searchParams.get('type') === 'recovery' ||
+    hashParams.get('type') === 'recovery' ||
+    pathname.endsWith('/reset-password') ||
+    pathname === '/reset-password';
+
   if (isRecoveryLink) {
     return <ResetPasswordPage />;
   }
@@ -82,7 +91,7 @@ function AppContent() {
 
   const handleDeleteEntry = async (id: string) => {
     if (!confirm('确定要删除这条记录吗？此操作无法撤销。')) return;
-    
+
     try {
       await deleteEntry(id);
       setSelectedEntry(null);
@@ -175,7 +184,7 @@ function AppContent() {
 
   // 未登录状态
   if (!user) {
-    return <AuthForm onAuthSuccess={() => {}} />;
+    return <AuthForm onAuthSuccess={() => { }} />;
   }
 
   return (
@@ -220,7 +229,7 @@ function AppContent() {
       </main>
 
       {/* Floating Action Button */}
-      <button 
+      <button
         onClick={handleOpenAddModal}
         className="fixed bottom-8 right-8 z-40 w-14 h-14 bg-primary-container text-on-primary rounded-xl flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all"
       >

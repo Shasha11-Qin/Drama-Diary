@@ -9,6 +9,40 @@ export function ResetPasswordPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  // 如果 URL 中包含 Supabase 返回的 access_token/refresh_token（可能在 hash 或 query），
+  // 在页面加载时用它们建立会话，并清理 URL，保证后续的 updateUser 能正常工作。
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const access_token = searchParams.get('access_token') || hashParams.get('access_token');
+    const refresh_token = searchParams.get('refresh_token') || hashParams.get('refresh_token');
+
+    if (!access_token) return;
+
+    (async () => {
+      try {
+        // 将从 URL 中解析到的 token 设置为 Supabase 会话
+        await supabase.auth.setSession({ access_token, refresh_token: refresh_token || undefined });
+      } catch (err) {
+        // 不阻塞渲染，提交时会显示错误
+        // eslint-disable-next-line no-console
+        console.error('Failed to set supabase session from URL', err);
+      } finally {
+        // 清理 URL 中的敏感参数，避免泄露
+        try {
+          const url = new URL(window.location.href);
+          url.hash = '';
+          url.searchParams.delete('access_token');
+          url.searchParams.delete('refresh_token');
+          url.searchParams.delete('type');
+          window.history.replaceState({}, document.title, url.toString());
+        } catch (e) {
+          // ignore
+        }
+      }
+    })();
+  }, []);
+
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');

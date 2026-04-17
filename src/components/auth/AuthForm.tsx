@@ -20,13 +20,13 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
-  
+
   // 记住邮箱相关状态
   const [rememberedEmails, setRememberedEmails] = useState<string[]>([]);
   const [showEmailDropdown, setShowEmailDropdown] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoaded, setIsLoaded] = useState(false);
-  
+
   // 用于检测点击外部关闭下拉菜单
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -43,7 +43,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
         }
       }
       setRememberedEmails(emails);
-      
+
       // 加载最后使用的邮箱
       const lastEmail = localStorage.getItem(LAST_USED_EMAIL_KEY);
       if (lastEmail && emails.includes(lastEmail)) {
@@ -51,7 +51,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
       } else if (emails.length > 0) {
         setEmail(emails[0]);
       }
-      
+
       setIsLoaded(true);
     } catch {
       setIsLoaded(true);
@@ -68,7 +68,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
 
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('touchstart', handleClickOutside);
-    
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
@@ -78,10 +78,10 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
   // 保存邮箱到本地存储
   const saveEmailToStorage = useCallback((emailToSave: string) => {
     if (!emailToSave) return;
-    
+
     // 始终保存最后使用的邮箱
     localStorage.setItem(LAST_USED_EMAIL_KEY, emailToSave);
-    
+
     // 如果勾选了"记住账号"，则添加到列表
     if (rememberMe) {
       setRememberedEmails(prev => {
@@ -100,24 +100,24 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
       e.preventDefault();
       e.stopPropagation();
     }
-    
+
     setRememberedEmails(prev => {
       const updated = prev.filter(e => e !== emailToRemove);
       localStorage.setItem(REMEMBERED_EMAILS_KEY, JSON.stringify(updated));
       return updated;
     });
-    
+
     // 如果删除的是当前显示的邮箱，清空输入框
     if (email === emailToRemove) {
       setEmail('');
     }
-    
+
     // 如果删除的是最后使用的邮箱，也清除
     const lastEmail = localStorage.getItem(LAST_USED_EMAIL_KEY);
     if (lastEmail === emailToRemove) {
       localStorage.removeItem(LAST_USED_EMAIL_KEY);
     }
-    
+
     // 如果删除后没有邮箱了，关闭下拉菜单
     if (rememberedEmails.length <= 1) {
       setShowEmailDropdown(false);
@@ -136,7 +136,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
       });
 
       if (error) throw error;
-      
+
       // 登录成功，保存邮箱
       saveEmailToStorage(email);
       onAuthSuccess();
@@ -177,8 +177,13 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
     setAuthLoading(true);
 
     try {
+      // 如果在开发环境使用 localhost，手机端点击邮件中的链接通常无法访问本机。
+      // 建议在 .env 中设置 VITE_APP_URL 为可被手机访问的地址（例如 http://192.168.1.10:3000 或生产域名）。
+      const redirectBase = (import.meta.env as any).VITE_APP_URL || window.location.origin;
+      const redirectTo = `${redirectBase.replace(/\/$/, '')}/reset-password`;
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo,
       });
 
       if (error) throw error;
@@ -228,21 +233,19 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
             <div className="flex border-b border-gray-200">
               <button
                 onClick={() => { setAuthMode('login'); setAuthError(''); }}
-                className={`flex-1 py-3 text-center font-medium transition-colors ${
-                  authMode === 'login'
+                className={`flex-1 py-3 text-center font-medium transition-colors ${authMode === 'login'
                     ? 'text-primary border-b-2 border-primary'
                     : 'text-gray-400 hover:text-gray-600'
-                }`}
+                  }`}
               >
                 登录
               </button>
               <button
                 onClick={() => { setAuthMode('signup'); setAuthError(''); }}
-                className={`flex-1 py-3 text-center font-medium transition-colors ${
-                  authMode === 'signup'
+                className={`flex-1 py-3 text-center font-medium transition-colors ${authMode === 'signup'
                     ? 'text-primary border-b-2 border-primary'
                     : 'text-gray-400 hover:text-gray-600'
-                }`}
+                  }`}
               >
                 注册
               </button>
@@ -277,7 +280,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
                   </button>
                 )}
               </div>
-              
+
               {/* 记住的邮箱下拉列表 */}
               {authMode === 'login' && showEmailDropdown && rememberedEmails.length > 0 && (
                 <div className="relative">
@@ -344,9 +347,8 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
                   onClick={() => setRememberMe(!rememberMe)}
                   className={`flex items-center gap-2 text-sm ${rememberMe ? 'text-primary' : 'text-gray-400'}`}
                 >
-                  <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                    rememberMe ? 'bg-primary border-primary' : 'border-gray-300'
-                  }`}>
+                  <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${rememberMe ? 'bg-primary border-primary' : 'border-gray-300'
+                    }`}>
                     {rememberMe && <Check className="w-3.5 h-3.5 text-white" />}
                   </div>
                   记住账号
@@ -362,11 +364,10 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
             )}
 
             {authError && (
-              <div className={`text-sm p-3 rounded-lg ${
-                authError.includes('成功')
+              <div className={`text-sm p-3 rounded-lg ${authError.includes('成功')
                   ? 'bg-green-50 text-green-600'
                   : 'bg-red-50 text-red-500'
-              }`}>
+                }`}>
                 {authError}
               </div>
             )}
