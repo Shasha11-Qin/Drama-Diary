@@ -5,7 +5,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Search, X, Plus, BookOpen, Image, Edit3, Database } from 'lucide-react';
+import { Search, X, Plus, BookOpen, Image, Edit3, Database, Mic, MicOff } from 'lucide-react';
+
+// 简化的 SpeechRecognition 类型声明
+type SpeechRecognition = any;
+interface WindowWithSpeechRecognition extends Window {
+  SpeechRecognition?: new () => SpeechRecognition;
+  webkitSpeechRecognition?: new () => SpeechRecognition;
+}
 import { DramaEntry } from '../../types';
 import {
   searchAll,
@@ -46,6 +53,7 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
     firstEncounter: initialData?.firstEncounter || initialData?.releaseDate || '',
     currentEpisode: initialData?.currentEpisode || 0,
     totalEpisodes: initialData?.totalEpisodes || 0,
+    type: initialData?.type || 'tv' as 'tv' | 'movie',
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,6 +62,47 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
   const [searchFilter, setSearchFilter] = useState<'all' | 'tv' | 'movie'>('all');
   const [showReflectionModal, setShowReflectionModal] = useState(false);
   const [newTag, setNewTag] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+
+  const startVoiceRecognition = () => {
+    const windowWithSpeech = window as WindowWithSpeechRecognition;
+    if (windowWithSpeech.SpeechRecognition || windowWithSpeech.webkitSpeechRecognition) {
+      const SpeechRecognition = windowWithSpeech.SpeechRecognition || windowWithSpeech.webkitSpeechRecognition;
+      const recognitionInstance = new SpeechRecognition();
+      recognitionInstance.lang = 'zh-CN';
+      recognitionInstance.continuous = false;
+      recognitionInstance.interimResults = false;
+
+      recognitionInstance.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setSearchQuery(transcript);
+      };
+
+      recognitionInstance.onerror = (event: any) => {
+        console.error('语音识别错误:', event.error);
+        setIsListening(false);
+      };
+
+      recognitionInstance.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionInstance.start();
+      setRecognition(recognitionInstance);
+      setIsListening(true);
+    } else {
+      alert('您的浏览器不支持语音识别功能');
+    }
+  };
+
+  const stopVoiceRecognition = () => {
+    if (recognition) {
+      recognition.stop();
+      setRecognition(null);
+      setIsListening(false);
+    }
+  };
 
   // 当播出时间变化且首次观看时间为空时，自动同步
   useEffect(() => {
@@ -99,6 +148,12 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
       // 获取播出平台
       const platform = detail.networks?.[0]?.name || '';
 
+      // 获取总集数（电视剧）
+      let totalEpisodes = 0;
+      if (isTV && detail.number_of_episodes) {
+        totalEpisodes = detail.number_of_episodes;
+      }
+
       setFormData({
         ...formData,
         title: detail.name || '',
@@ -108,8 +163,10 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
         tags: tags,
         releaseDate: detail.first_air_date || '',
         poster: getPosterUrl(detail.poster_path, 'w500'),
+        type: isTV ? 'tv' : 'movie',
+        totalEpisodes: totalEpisodes,
       });
-      
+
       // 手机端：选择后跳转到表单页面
       setMobileStep('form');
     } catch (error) {
@@ -146,6 +203,7 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
       firstEncounter: formData.firstEncounter || undefined,
       currentEpisode: formData.currentEpisode || undefined,
       totalEpisodes: formData.totalEpisodes || undefined,
+      type: formData.type,
     };
 
     if (initialData?.completionDate) newEntry.completionDate = initialData.completionDate;
@@ -176,13 +234,12 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className={`relative w-full ${
-          initialData
-            ? 'max-w-4xl'
-            : inputMode === 'manual'
-              ? 'max-w-3xl'
-              : 'max-w-6xl'
-        } bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-[750px]`}
+        className={`relative w-full ${initialData
+          ? 'max-w-4xl'
+          : inputMode === 'manual'
+            ? 'max-w-3xl'
+            : 'max-w-6xl'
+          } bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-[750px]`}
       >
         {/* Left Page: Discovery - Only show when creating new entry and in TMDB mode */}
         {/* 电脑端：并排显示 | 手机端：根据步骤显示 */}
@@ -198,16 +255,27 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
               <h2 className="font-serif text-2xl text-on-surface">搜索剧集</h2>
               <span className="text-xs font-medium tracking-widest text-primary/60 uppercase">TMDB 数据</span>
             </div>
-            <div className="relative flex-shrink-0">
+            <div className="relative flex-shrink-0 flex items-center">
               <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
               <input
-                className="w-full border-none border-b border-outline bg-transparent pl-8 py-3 focus:ring-0 focus:border-primary placeholder:italic text-lg"
+                className="w-full border-none border-b border-outline bg-transparent pl-8 pr-12 py-3 focus:ring-0 focus:border-primary placeholder:italic text-lg"
                 placeholder="输入剧名搜索..."
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoComplete="off"
               />
+              <button
+                onClick={isListening ? stopVoiceRecognition : startVoiceRecognition}
+                className="absolute right-0 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                title={isListening ? "停止语音录入" : "语音录入"}
+              >
+                {isListening ? (
+                  <MicOff className="w-5 h-5 text-primary" />
+                ) : (
+                  <Mic className="w-5 h-5 text-gray-400" />
+                )}
+              </button>
             </div>
             {/* 筛选按钮 */}
             <div className="flex gap-2 flex-shrink-0">
@@ -215,11 +283,10 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                 <button
                   key={filter}
                   onClick={() => setSearchFilter(filter)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
-                    searchFilter === filter
-                      ? 'bg-primary text-on-primary'
-                      : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
-                  }`}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${searchFilter === filter
+                    ? 'bg-primary text-on-primary'
+                    : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                    }`}
                 >
                   {filter === 'all' ? '全部' : filter === 'tv' ? '电视剧' : '电影'}
                 </button>
@@ -236,10 +303,10 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                 if (searchFilter === 'tv') return isTVShow(item);
                 return !isTVShow(item);
               }).length === 0 && (
-                <div className="text-center py-8 text-on-surface-variant">
-                  未找到相关{searchFilter === 'tv' ? '电视剧' : searchFilter === 'movie' ? '电影' : '剧集'}
-                </div>
-              )}
+                  <div className="text-center py-8 text-on-surface-variant">
+                    未找到相关{searchFilter === 'tv' ? '电视剧' : searchFilter === 'movie' ? '电影' : '剧集'}
+                  </div>
+                )}
               {!isSearching && searchResults.filter(item => {
                 if (searchFilter === 'all') return true;
                 if (searchFilter === 'tv') return isTVShow(item);
@@ -300,11 +367,10 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                     setInputMode('tmdb');
                     setMobileStep('search');
                   }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    inputMode === 'tmdb'
-                      ? 'bg-primary text-on-primary shadow-sm'
-                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${inputMode === 'tmdb'
+                    ? 'bg-primary text-on-primary shadow-sm'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                    }`}
                 >
                   <Database className="w-4 h-4" />
                   <span className="hidden sm:inline">TMDB 搜索</span>
@@ -315,11 +381,10 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                     setInputMode('manual');
                     setMobileStep('form');
                   }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    inputMode === 'manual'
-                      ? 'bg-primary text-on-primary shadow-sm'
-                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${inputMode === 'manual'
+                    ? 'bg-primary text-on-primary shadow-sm'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                    }`}
                 >
                   <Edit3 className="w-4 h-4" />
                   <span className="hidden sm:inline">手工录入</span>
@@ -340,7 +405,7 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                 <label className="text-[10px] font-bold uppercase tracking-widest text-primary">剧集名称</label>
                 <input
                   value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className="w-full bg-surface-container-lowest border border-outline/10 rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
                   placeholder="输入剧名"
                 />
@@ -351,7 +416,7 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                   <label className="text-[10px] font-bold uppercase tracking-widest text-primary">主演阵容</label>
                   <input
                     value={formData.actors}
-                    onChange={(e) => setFormData({...formData, actors: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, actors: e.target.value })}
                     className="w-full bg-surface-container-lowest border border-outline/10 rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
                     placeholder="如：范伟 / 秦昊"
                   />
@@ -360,7 +425,7 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                   <label className="text-[10px] font-bold uppercase tracking-widest text-primary">播出平台</label>
                   <input
                     value={formData.platform}
-                    onChange={(e) => setFormData({...formData, platform: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
                     className="w-full bg-surface-container-lowest border border-outline/10 rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
                     placeholder="如：腾讯视频"
                   />
@@ -373,7 +438,7 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                   <input
                     type="date"
                     value={formData.releaseDate}
-                    onChange={(e) => setFormData({...formData, releaseDate: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, releaseDate: e.target.value })}
                     className="w-full bg-surface-container-lowest border border-outline/10 rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
                   />
                 </div>
@@ -382,7 +447,7 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                   <input
                     type="date"
                     value={formData.firstEncounter}
-                    onChange={(e) => setFormData({...formData, firstEncounter: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, firstEncounter: e.target.value })}
                     className="w-full bg-surface-container-lowest border border-outline/10 rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
                   />
                 </div>
@@ -395,15 +460,38 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                     <button
                       key={s}
                       onClick={() => setFormData({ ...formData, status: s })}
-                      className={`flex-1 py-2 text-[10px] font-bold rounded-lg border transition-all ${
-                        formData.status === s
-                          ? 'bg-primary text-on-primary border-primary'
-                          : 'bg-surface-container-lowest text-on-surface-variant border-outline/10 hover:border-primary/30'
-                      }`}
+                      className={`flex-1 py-2 text-[10px] font-bold rounded-lg border transition-all ${formData.status === s
+                        ? 'bg-primary text-on-primary border-primary'
+                        : 'bg-surface-container-lowest text-on-surface-variant border-outline/10 hover:border-primary/30'
+                        }`}
                     >
                       {s === 'completed' ? '已看完' : s === 'watching' ? '在看' : '想看'}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-primary">类型</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setFormData({ ...formData, type: 'tv' })}
+                    className={`flex-1 py-2 text-[10px] font-bold rounded-lg border transition-all ${formData.type === 'tv'
+                      ? 'bg-primary text-on-primary border-primary'
+                      : 'bg-surface-container-lowest text-on-surface-variant border-outline/10 hover:border-primary/30'
+                      }`}
+                  >
+                    电视剧
+                  </button>
+                  <button
+                    onClick={() => setFormData({ ...formData, type: 'movie' })}
+                    className={`flex-1 py-2 text-[10px] font-bold rounded-lg border transition-all ${formData.type === 'movie'
+                      ? 'bg-primary text-on-primary border-primary'
+                      : 'bg-surface-container-lowest text-on-surface-variant border-outline/10 hover:border-primary/30'
+                      }`}
+                  >
+                    电影
+                  </button>
                 </div>
               </div>
 
@@ -476,11 +564,11 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                     type="number"
                     min="1"
                     value={formData.watchCount}
-                    onChange={(e) => setFormData({...formData, watchCount: parseInt(e.target.value) || 1})}
+                    onChange={(e) => setFormData({ ...formData, watchCount: parseInt(e.target.value) || 1 })}
                     className="flex-1 bg-surface-container-lowest border border-outline/10 rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
                   />
                   <button
-                    onClick={() => setFormData({...formData, watchCount: formData.watchCount + 1})}
+                    onClick={() => setFormData({ ...formData, watchCount: formData.watchCount + 1 })}
                     className="px-4 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors flex items-center justify-center"
                     title="增加一次"
                   >
@@ -504,7 +592,7 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                     if (file) {
                       const reader = new FileReader();
                       reader.onloadend = () => {
-                        setFormData({...formData, poster: reader.result as string});
+                        setFormData({ ...formData, poster: reader.result as string });
                       };
                       reader.readAsDataURL(file);
                     }
@@ -526,9 +614,9 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
 
           <div className="flex flex-col gap-1.5">
             <label className="text-[10px] font-bold uppercase tracking-widest text-primary">剧情简介</label>
-            <textarea 
+            <textarea
               value={formData.summary}
-              onChange={(e) => setFormData({...formData, summary: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
               className="w-full h-[80px] bg-surface-container-lowest border border-outline/10 rounded-lg px-4 py-3 text-sm focus:ring-1 focus:ring-primary outline-none resize-none leading-relaxed"
               placeholder="简要概括剧情..."
             />
@@ -538,64 +626,23 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-6">
-              {/* 情绪滑块评分 */}
+              {/* 爱心按钮评分 */}
               <div className="flex flex-col gap-3">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-primary">喜爱程度</label>
-                <div className="relative">
-                  {/* 表情显示 */}
-                  <div className="text-center mb-2">
-                    <span className="text-4xl transition-transform duration-200" style={{ transform: `scale(${1 + formData.rating * 0.05})` }}>
-                      {getRatingEmoji(formData.rating)}
-                    </span>
-                    <p className="text-xs text-on-surface-variant mt-1">
-                      {getRatingText(formData.rating)}
-                    </p>
-                  </div>
-                  {/* 滑轨 */}
-                  <div className="relative h-10 flex items-center px-4">
-                    {/* 背景渐变 */}
-                    <div
-                      className="absolute inset-x-4 h-2 rounded-full transition-all duration-300"
-                      style={{
-                        background: `linear-gradient(to right,
-                          #94a3b8 0%,
-                          #fbbf24 ${formData.rating * 20}%,
-                          #e2e8f0 ${formData.rating * 20}%,
-                          #e2e8f0 100%)`
-                      }}
-                    />
-                    {/* 两端表情 */}
-                    <span className="absolute left-0 top-1 text-base opacity-50">😞</span>
-                    <span className="absolute right-0 top-1 text-base opacity-50">😍</span>
-                    {/* 滑块输入 - 使用自定义样式 */}
-                    <input
-                      type="range"
-                      min="1"
-                      max="5"
-                      step="1"
-                      value={formData.rating}
-                      onChange={(e) => setFormData({...formData, rating: parseInt(e.target.value)})}
-                      className="absolute inset-0 w-full h-full z-10 cursor-pointer"
-                      style={{
-                        WebkitAppearance: 'none',
-                        appearance: 'none',
-                        background: 'transparent',
-                        margin: 0
-                      }}
-                    />
-                    {/* 滑块指示器 */}
-                    <div
-                      className="absolute w-7 h-7 bg-white rounded-full shadow-lg border-2 transition-all duration-100 flex items-center justify-center z-20 pointer-events-none"
-                      style={{
-                        left: `calc(1rem + ${(formData.rating - 1) * 22}%)`,
-                        transform: 'translateX(-50%)',
-                        borderColor: formData.rating <= 2 ? '#94a3b8' : formData.rating <= 3 ? '#fbbf24' : '#f97316'
-                      }}
-                    >
-                      <span className="text-sm">
-                        {getRatingEmoji(formData.rating)}
-                      </span>
-                    </div>
+                <div className="text-center">
+                  <div className="flex justify-center flex-wrap gap-1">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => (
+                      <button
+                        key={level}
+                        onClick={() => {
+                          setFormData({ ...formData, rating: level });
+                        }}
+                        className={`text-lg transition-all duration-200 cursor-pointer ${formData.rating >= level ? 'text-red-500 scale-110' : 'text-gray-300'}`}
+                        title={`${level} 颗心`}
+                      >
+                        {formData.rating >= level ? '❤️' : '🤍'}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -606,11 +653,11 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                   {formData.tags.map(t => (
                     <span key={t} className="px-3 py-1 rounded-full text-xs bg-primary text-on-primary flex items-center gap-1.5">
                       {t}
-                      <X className="w-3 h-3 cursor-pointer" onClick={() => setFormData({...formData, tags: formData.tags.filter(tag => tag !== t)})} />
+                      <X className="w-3 h-3 cursor-pointer" onClick={() => setFormData({ ...formData, tags: formData.tags.filter(tag => tag !== t) })} />
                     </span>
                   ))}
                   <div className="flex gap-2 items-center">
-                    <input 
+                    <input
                       type="text"
                       value={newTag}
                       onChange={(e) => setNewTag(e.target.value)}
@@ -618,7 +665,7 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
                       placeholder="新标签"
                       className="w-24 bg-surface-container-lowest border border-outline/10 rounded-full px-3 py-1 text-xs focus:ring-1 focus:ring-primary outline-none"
                     />
-                    <button 
+                    <button
                       onClick={handleAddTag}
                       className="p-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                     >
@@ -664,8 +711,8 @@ export function EntryModal({ onClose, onSave, initialData, isSaving }: EntryModa
             <button onClick={onClose} className="px-6 py-2.5 text-on-surface-variant font-bold text-sm hover:bg-surface-container transition-colors rounded-lg">
               取消
             </button>
-            <button 
-              onClick={handleSave} 
+            <button
+              onClick={handleSave}
               disabled={isSaving}
               className={`flex items-center gap-3 px-10 py-3 bg-primary text-on-primary rounded-lg font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all ${isSaving ? 'opacity-70 cursor-not-allowed' : ''}`}
             >

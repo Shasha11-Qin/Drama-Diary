@@ -3,9 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
-import { Search, LogOut, Upload } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, LogOut, Upload, Mic, MicOff } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
+
+// 简化的 SpeechRecognition 类型声明
+type SpeechRecognition = any;
+interface WindowWithSpeechRecognition extends Window {
+  SpeechRecognition?: new () => SpeechRecognition;
+  webkitSpeechRecognition?: new () => SpeechRecognition;
+}
 
 interface NavbarProps {
   user: User | null;
@@ -17,6 +24,48 @@ interface NavbarProps {
 
 export function Navbar({ user, searchQuery, onSearchChange, onLogout, onImport }: NavbarProps) {
   if (!user) return null;
+
+  const [isListening, setIsListening] = useState(false);
+  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+
+  const startVoiceRecognition = () => {
+    const windowWithSpeech = window as WindowWithSpeechRecognition;
+    if (windowWithSpeech.SpeechRecognition || windowWithSpeech.webkitSpeechRecognition) {
+      const SpeechRecognition = windowWithSpeech.SpeechRecognition || windowWithSpeech.webkitSpeechRecognition;
+      const recognitionInstance = new SpeechRecognition();
+      recognitionInstance.lang = 'zh-CN';
+      recognitionInstance.continuous = false;
+      recognitionInstance.interimResults = false;
+
+      recognitionInstance.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        onSearchChange(transcript);
+      };
+
+      recognitionInstance.onerror = (event: any) => {
+        console.error('语音识别错误:', event.error);
+        setIsListening(false);
+      };
+
+      recognitionInstance.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionInstance.start();
+      setRecognition(recognitionInstance);
+      setIsListening(true);
+    } else {
+      alert('您的浏览器不支持语音识别功能');
+    }
+  };
+
+  const stopVoiceRecognition = () => {
+    if (recognition) {
+      recognition.stop();
+      setRecognition(null);
+      setIsListening(false);
+    }
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-surface/80 backdrop-blur-md px-4 py-3 border-b border-outline/10">
@@ -37,6 +86,17 @@ export function Navbar({ user, searchQuery, onSearchChange, onLogout, onImport }
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
             />
+            <button
+              onClick={isListening ? stopVoiceRecognition : startVoiceRecognition}
+              className="p-1.5 hover:bg-gray-200 rounded-full transition-colors ml-2"
+              title={isListening ? "停止语音录入" : "语音录入"}
+            >
+              {isListening ? (
+                <MicOff className="w-4 h-4 text-primary" />
+              ) : (
+                <Mic className="w-4 h-4 text-gray-400" />
+              )}
+            </button>
           </div>
         </div>
 
@@ -103,6 +163,17 @@ export function Navbar({ user, searchQuery, onSearchChange, onLogout, onImport }
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
           />
+          <button
+            onClick={isListening ? stopVoiceRecognition : startVoiceRecognition}
+            className="p-1.5 hover:bg-gray-200 rounded-full transition-colors ml-2 flex-shrink-0"
+            title={isListening ? "停止语音录入" : "语音录入"}
+          >
+            {isListening ? (
+              <MicOff className="w-4 h-4 text-primary" />
+            ) : (
+              <Mic className="w-4 h-4 text-gray-400" />
+            )}
+          </button>
         </div>
       </div>
     </nav>

@@ -29,10 +29,12 @@ export function useEntries(user: User | null, authChecked: boolean) {
 
     try {
       setLoading(true);
+      // 尝试按 order 字段排序，如果数据库中没有该字段，会自动忽略这个排序条件
       const { data, error } = await supabase
         .from('dramas')
         .select('*')
         .eq('user_id', user.id)
+        .order('order', { ascending: true, nullsFirst: true })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -58,6 +60,7 @@ export function useEntries(user: User | null, authChecked: boolean) {
         isMustWatch: item.is_must_watch || false,
         currentEpisode: item.current_episode,
         totalEpisodes: item.total_episodes,
+        type: item.type || 'tv',
       }));
 
       setEntries(formattedData);
@@ -74,7 +77,7 @@ export function useEntries(user: User | null, authChecked: boolean) {
 
     try {
       // 转换前端字段到数据库格式
-      const dbData = {
+      const dbData: any = {
         user_id: user.id,
         title: entry.title,
         poster: entry.poster,
@@ -93,7 +96,13 @@ export function useEntries(user: User | null, authChecked: boolean) {
         is_must_watch: entry.isMustWatch,
         current_episode: entry.currentEpisode,
         total_episodes: entry.totalEpisodes,
+        type: entry.type || 'tv',
       };
+
+      // 只在 entry.order 存在时添加 order 字段
+      if (entry.order !== undefined) {
+        dbData.order = entry.order;
+      }
 
       if (entry.id) {
         const { error } = await supabase
@@ -105,7 +114,7 @@ export function useEntries(user: User | null, authChecked: boolean) {
       } else {
         const { error } = await supabase
           .from('dramas')
-          .insert([dbData]);
+          .insert(dbData);
 
         if (error) throw error;
       }
@@ -156,6 +165,38 @@ export function useEntries(user: User | null, authChecked: boolean) {
     }
   }, [fetchEntries]);
 
+  const updateEntryOrder = useCallback(async (orderedIds: string[]) => {
+    if (!user || orderedIds.length === 0) return;
+
+    try {
+      // 批量更新数据库中的排序
+      // 这里使用 Promise.all 来并行执行所有更新操作
+      const updatePromises = orderedIds.map((id, index) => {
+        return supabase
+          .from('dramas')
+          .update({ order: index })
+          .eq('id', id)
+          .eq('user_id', user.id);
+      });
+
+      const results = await Promise.all(updatePromises);
+
+      // 检查是否有错误
+      results.forEach((result, index) => {
+        if (result.error) {
+          console.warn('Error updating order for entry', orderedIds[index], result.error);
+        }
+      });
+
+      // 不立即重新获取数据，而是在前端更新排序
+      // 这样可以避免页面自动下滑
+      // await fetchEntries();
+    } catch (error) {
+      console.error('Error updating entry order:', error);
+      // 即使出错也继续执行，确保前端排序功能正常
+    }
+  }, [user]);
+
   return {
     entries,
     loading,
@@ -164,6 +205,7 @@ export function useEntries(user: User | null, authChecked: boolean) {
     saveEntry,
     deleteEntry,
     deleteEntries,
+    updateEntryOrder,
     setEntries
   };
 }

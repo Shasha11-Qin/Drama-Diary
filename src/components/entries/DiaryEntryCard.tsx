@@ -54,9 +54,8 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = ({
     <motion.div
       layoutId={`entry-${entry.id}`}
       onClick={handleClick}
-      className={`group bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all cursor-pointer flex flex-col border-2 ${
-        selectMode && selected ? 'border-primary ring-2 ring-primary/30' : 'border-gray-100'
-      }`}
+      className={`group bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all cursor-pointer flex flex-col border-2 ${selectMode && selected ? 'border-primary ring-2 ring-primary/30' : 'border-gray-100'
+        }`}
     >
       {/* 海报区域 - 2:3 宽高比 */}
       <div className="relative w-full aspect-[2/3] bg-gray-200 overflow-hidden">
@@ -75,11 +74,10 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = ({
         {/* 选择模式下的复选框 */}
         {selectMode && (
           <div
-            className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md transition-colors ${
-              selected
-                ? 'bg-primary text-white'
-                : 'bg-white/90 text-gray-400 border-2 border-gray-300'
-            }`}
+            className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md transition-colors ${selected
+              ? 'bg-primary text-white'
+              : 'bg-white/90 text-gray-400 border-2 border-gray-300'
+              }`}
           >
             {selected && <Check className="w-4 h-4" />}
           </div>
@@ -96,6 +94,11 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = ({
             <Heart className="w-4 h-4 fill-red-500 text-red-500 drop-shadow" />
           </div>
         )}
+        {/* 爱心数量标签 - 右上角偏下 */}
+        <div className="absolute bottom-2 right-2 bg-black/60 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-0.5">
+          <span>{entry.rating}</span>
+          <span className="text-red-400">❤</span>
+        </div>
       </div>
 
       {/* 卡片内容区域 */}
@@ -109,16 +112,6 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = ({
         <p className="mt-1 text-gray-600 text-[10px] min-[400px]:text-xs truncate">
           {entry.actors.join(' / ')}
         </p>
-
-        {/* 评分 - 表情显示 */}
-        <div className="flex items-center gap-1 mt-1">
-          <span className="text-base">
-            {getRatingEmoji(entry.rating)}
-          </span>
-          <span className="text-[10px] text-gray-500">
-            {getRatingText(entry.rating)}
-          </span>
-        </div>
 
         {/* 观看进度 - 仅在看状态且有集数信息时显示 */}
         {entry.status === 'watching' && entry.totalEpisodes && entry.totalEpisodes > 0 && (
@@ -138,9 +131,16 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = ({
           </div>
         )}
 
-        {/* 播出平台 */}
-        <div className="mt-auto pt-2 text-[10px] text-gray-400 truncate">
-          {entry.platform}
+        {/* 播出平台和集数 */}
+        <div className="mt-auto pt-2 flex items-center justify-between text-[10px] text-gray-400">
+          <div className="truncate">
+            {entry.platform}
+          </div>
+          {entry.type === 'tv' && entry.totalEpisodes && (
+            <div className="flex items-center gap-1">
+              <span>共{entry.totalEpisodes}集</span>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

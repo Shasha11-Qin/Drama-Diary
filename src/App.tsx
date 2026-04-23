@@ -4,13 +4,17 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Edit3 } from 'lucide-react';
+import { Edit3, Menu } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
+import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthForm } from './components/auth/AuthForm';
 import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
 import { Navbar } from './components/layout/Navbar';
 import { EntryHeader, EntryList } from './components/entries/EntryList';
+import { DiaryEntryCard } from './components/entries/DiaryEntryCard';
 import { EntryModal } from './components/modals/EntryModal';
 import { JournalModal } from './components/modals/JournalModal';
 import { ImportModal } from './components/modals/ImportModal';
@@ -22,7 +26,7 @@ import { DramaEntry } from './types';
 
 export default function App() {
   // 注册 Service Worker
-  useServiceWorker();
+  // useServiceWorker();
 
   return (
     <>
@@ -52,7 +56,7 @@ function AppContent() {
   if (isRecoveryLink) {
     return <ResetPasswordPage />;
   }
-  const { entries, loading, saving, fetchEntries, saveEntry, deleteEntry, deleteEntries, setEntries } = useEntries(user, authChecked);
+  const { entries, loading, saving, fetchEntries, saveEntry, deleteEntry, deleteEntries, updateEntryOrder, setEntries } = useEntries(user, authChecked);
   const { searchQuery, setSearchQuery, searchResults } = useSearch(entries);
 
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
@@ -60,7 +64,7 @@ function AppContent() {
   const [editingEntry, setEditingEntry] = useState<DramaEntry | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<DramaEntry | null>(null);
   const [activeStatus, setActiveStatus] = useState<'watching' | 'completed' | 'planned'>('completed');
-  const [sortMode, setSortMode] = useState<'rating' | 'year'>('rating');
+  const [activeType, setActiveType] = useState<'all' | 'tv' | 'movie'>('all');
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -118,13 +122,15 @@ function AppContent() {
     setEditingEntry(null);
   };
 
-  const handleSortModeChange = () => {
-    setSortMode(prev => prev === 'rating' ? 'year' : 'rating');
-  };
-
   // 切换状态标签时清空选择
   const handleStatusChange = (status: 'watching' | 'completed' | 'planned') => {
     setActiveStatus(status);
+    setSelectedIds([]);
+  };
+
+  // 切换类型时清空选择
+  const handleTypeChange = (type: 'all' | 'tv' | 'movie') => {
+    setActiveType(type);
     setSelectedIds([]);
   };
 
@@ -173,6 +179,70 @@ function AppContent() {
     await fetchEntries();
   };
 
+  // 处理拖拽结束事件
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    // 确定要排序的条目列表
+    let itemsToSort = entries;
+
+    // 如果有搜索词，使用搜索结果进行排序
+    if (searchQuery.trim()) {
+      itemsToSort = searchResults;
+    } else {
+      // 否则按状态筛选
+      itemsToSort = entries.filter(e => e.status === activeStatus);
+    }
+
+    const newOrder = Array.from(itemsToSort);
+    const activeIndex = newOrder.findIndex(item => item.id === active.id);
+    const overIndex = newOrder.findIndex(item => item.id === over.id);
+
+    // 重新排序
+    const [movedItem] = newOrder.splice(activeIndex, 1);
+    newOrder.splice(overIndex, 0, movedItem);
+
+    // 更新数据库中的顺序
+    const orderedIds = newOrder.map(entry => entry.id);
+    await updateEntryOrder(orderedIds);
+  };
+
+  // 创建传感器
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8
+      }
+    })
+  );
+
+  // 排序项目组件
+  const SortableItem = ({ entry, onEntryClick, selectMode, selected, onSelect }: any) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: entry.id
+    });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1
+    };
+
+    return (
+      <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+        <DiaryEntryCard
+          entry={entry}
+          onClick={() => onEntryClick(entry)}
+          selectMode={selectMode}
+          selected={selected}
+          onSelect={onSelect}
+        />
+      </div>
+    );
+  };
+
   // 加载状态
   if (loading || !authChecked) {
     return (
@@ -203,11 +273,11 @@ function AppContent() {
         <EntryHeader
           entries={entries}
           activeStatus={activeStatus}
-          sortMode={sortMode}
+          activeType={activeType}
           selectMode={selectMode}
           selectedCount={selectedIds.length}
           onStatusChange={handleStatusChange}
-          onSortModeChange={handleSortModeChange}
+          onTypeChange={handleTypeChange}
           onToggleSelectMode={handleToggleSelectMode}
           onSelectAll={handleSelectAll}
           onDeleteSelected={handleDeleteSelected}
@@ -216,12 +286,13 @@ function AppContent() {
         <EntryList
           entries={entries}
           activeStatus={activeStatus}
-          sortMode={sortMode}
+          activeType={activeType}
+          sortMode="year"
           searchQuery={searchQuery}
           searchResults={searchResults}
           onStatusChange={handleStatusChange}
-          onSortModeChange={handleSortModeChange}
           onEntryClick={setSelectedEntry}
+          onDragEnd={handleDragEnd}
           selectMode={selectMode}
           selectedIds={selectedIds}
           onSelect={handleSelect}

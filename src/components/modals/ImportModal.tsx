@@ -213,11 +213,10 @@ export function ImportModal({ onClose, onImport }: ImportModalProps) {
           {step === 'upload' && (
             <div className="space-y-4">
               <div
-                className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
-                  dragActive
+                className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${dragActive
                     ? 'border-primary bg-primary/5'
                     : 'border-outline/30 hover:border-primary/50'
-                }`}
+                  }`}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -279,17 +278,15 @@ export function ImportModal({ onClose, onImport }: ImportModalProps) {
                   <div
                     key={index}
                     onClick={() => toggleSelect(index)}
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                      item.selected
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${item.selected
                         ? 'border-primary bg-primary/5'
                         : 'border-outline/20 hover:border-outline/40'
-                    }`}
+                      }`}
                   >
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      item.selected
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${item.selected
                         ? 'bg-primary border-primary'
                         : 'border-outline/40'
-                    }`}>
+                      }`}>
                       {item.selected && <Check className="w-3 h-3 text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Download, Smartphone } from 'lucide-react';
 
@@ -146,7 +146,7 @@ export function PWAInstallPrompt() {
 
 // Service Worker 注册钩子
 export function useServiceWorker() {
-  useEffect(() => {
+  React.useEffect(() => {
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker

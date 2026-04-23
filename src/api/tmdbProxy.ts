@@ -56,6 +56,7 @@ export interface TMDBDetail {
     cast: TMDBCredit[];
   };
   number_of_seasons: number;
+  number_of_episodes: number;
   status: string;
   original_language: string;
   origin_country: string[];
